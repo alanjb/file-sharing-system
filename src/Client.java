@@ -116,7 +116,6 @@ public class Client {
             //send file size to server
             outToServer.writeLong(fileSize);
 
-            DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
             FileInputStream fis = new FileInputStream(file);
             byte[] buffer = new byte[(int) fileSize];
 
@@ -125,7 +124,7 @@ public class Client {
             }
 
             fis.close();
-            dos.close();
+            outToServer.close();
 
         } catch (Exception error) {
             error.printStackTrace();
