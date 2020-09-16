@@ -45,11 +45,6 @@ public class Client {
     }
 
     private static void runCommand(String[] args) throws IOException {
-        System.out.println("lengths of args: " + args.length);
-        System.out.println("arg 0: " + args[0]);
-        System.out.println("arg 1: " + args[1]);
-        System.out.println("arg 2: " + args[2]);
-
         String userCommand = args[0];
 
         try {
