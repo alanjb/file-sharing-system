@@ -102,7 +102,9 @@ public class Client {
         long fileSize = file.length();
         byte[] buffer = new byte[(int) fileSize];
 
-        BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file));
+        FileInputStream fis = new FileInputStream(file);
+
+//        BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file));
 
         //send command type
         outToServer.writeUTF(command);
@@ -122,7 +124,7 @@ public class Client {
                 int filePos = Integer.parseInt(filePosition);
 
                 //Advance the stream to the desired location in the file
-                bis.skip(filePos);
+                fis.skip(filePos);
 
             }
 
@@ -132,16 +134,19 @@ public class Client {
             //send file size to server
             outToServer.writeLong(fileSize);
 
-            //read data into buffer
-            bis.read(buffer, 0, buffer.length);
+            int read = 0;
+            int totalRead = 0;
+            long remaining = fileSize;
+            while (fis.read(buffer) > 0) {
+                totalRead += read;
+                remaining -= read;
 
-            outToServer.write(buffer, 0, buffer.length);
+                System.out.println(remaining + " bytes left to read" + "/" + fileSize + " total bytes");
+                outToServer.write(buffer);
+            }
 
-//            System.out.println("Arrays on server:" + Arrays.toString(buffer));
-
-            outToServer.flush();
-
-            bis.close();
+            fis.close();
+            outToServer.close();
 
             System.out.println("Finished sending file...");
 
