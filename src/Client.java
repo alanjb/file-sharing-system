@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.*;
+import java.util.Arrays;
 
 public class Client {
     private static DataInputStream inFromServer = null;
@@ -48,10 +49,10 @@ public class Client {
         String userCommand = args[0];
 
         try {
-            if (userCommand.equalsIgnoreCase("upload")) {
+            if (userCommand.equalsIgnoreCase("send")) {
 
                 System.out.println("Saving file to server...");
-                uploadFileToServer(args[1], args[2]);
+                send(args[1], args[2]);
             }
 //            switch (userCommand) {
 //                case "upload":
@@ -95,36 +96,51 @@ public class Client {
         }
     }
 
-    private static void uploadFileToServer(String filePathOnClient, String filePathOnServer) throws IOException {
+    private static void send(String filePathOnClient, String filePathOnServer) throws IOException {
         String command = "upload";
         File file = new File(filePathOnClient);
         long fileSize = file.length();
+        byte[] buffer = new byte[(int) fileSize];
+
+        BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file));
 
         //send command type
         outToServer.writeUTF(command);
+        System.out.println("Sending command type to server: " + command);
+
+        //send file name to server
+        outToServer.writeUTF(file.getName());
+        System.out.println("Sending file name: " + file.getName());
 
         try {
+            //Server will send back if this file needs to finish uploading
+            if(inFromServer.readBoolean()){
+                //this means that an uploaded started but never finished so get filePosition
+                String filePosition = inFromServer.readUTF();
 
-            System.out.println("Sending file name: " + file.getName());
+                //convert from String to integer
+                int filePos = Integer.parseInt(filePosition);
 
-            //send file name to server
-            outToServer.writeUTF(file.getName());
+                //Advance the stream to the desired location in the file
+                bis.skip(filePos);
 
-            //send file path on server to server
-            outToServer.writeUTF(filePathOnServer);
+                //read data into buffer
+                bis.read(buffer, 0, buffer.length);
+            } else {
+                //send file path on server to server
+                outToServer.writeUTF(filePathOnServer);
 
-            //send file size to server
-            outToServer.writeLong(fileSize);
-
-            FileInputStream fis = new FileInputStream(file);
-            byte[] buffer = new byte[(int) fileSize];
-
-            while (fis.read(buffer) > 0) {
-                outToServer.write(buffer);
+                //send file size to server
+                outToServer.writeLong(fileSize);
             }
 
-            fis.close();
-            outToServer.close();
+            outToServer.write(buffer, 0, buffer.length);
+
+            System.out.println("Arrays on server:" + Arrays.toString(buffer ));
+
+            outToServer.flush();
+
+            bis.close();
 
         } catch (Exception error) {
             error.printStackTrace();
