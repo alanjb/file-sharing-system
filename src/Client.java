@@ -124,23 +124,26 @@ public class Client {
                 //Advance the stream to the desired location in the file
                 bis.skip(filePos);
 
-                //read data into buffer
-                bis.read(buffer, 0, buffer.length);
-            } else {
-                //send file path on server to server
-                outToServer.writeUTF(filePathOnServer);
-
-                //send file size to server
-                outToServer.writeLong(fileSize);
             }
+
+            //send file path on server to server
+            outToServer.writeUTF(filePathOnServer);
+
+            //send file size to server
+            outToServer.writeLong(fileSize);
+
+            //read data into buffer
+            bis.read(buffer, 0, buffer.length);
 
             outToServer.write(buffer, 0, buffer.length);
 
-            System.out.println("Arrays on server:" + Arrays.toString(buffer ));
+//            System.out.println("Arrays on server:" + Arrays.toString(buffer));
 
             outToServer.flush();
 
             bis.close();
+
+            System.out.println("Finished sending file...");
 
         } catch (Exception error) {
             error.printStackTrace();

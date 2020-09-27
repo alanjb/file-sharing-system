@@ -51,11 +51,15 @@ public class ClientServiceThread extends Thread {
                     //CHECKING STATUS OF THIS FILE - three states: completely new file, unfinished file, file already exists
                     String filePosition = searchForUnfinishedFiles(fileName);
 
+                    System.out.println("File Position: " + filePosition);
+
                     if(filePosition != null){
+                        System.out.println("********** RESUMING FILE UPLOAD FOR " + fileName);
                         //send file position for this file back to client
                         this.dos.writeBoolean(true);
                         this.dos.writeUTF(filePosition);
                     } else {
+                        System.out.println("********** STARTING A NEW FILE UPLOAD FOR " + fileName);
                         this.dos.writeBoolean(false);
                     }
 
@@ -80,43 +84,50 @@ public class ClientServiceThread extends Thread {
     private String searchForUnfinishedFiles(String fileName) throws IOException, ClassNotFoundException {
         //1. check if unfinishedFiles text file exists
         String filePosition = null;
-
-        //Path root = FileSystems.getDefault().getPath("").toAbsolutePath(); -- need to be OS agnostic
-        //this folder should be created immediately on first upload or download on respective machine
-        //
-        File unfinishedFiles = new File("/Users/unfinishedFiles.txt");
+        File unfinishedFiles = new File("/Users/unfinishedFiles.ser");
 
         if(unfinishedFiles.exists()) {
-            //we need to check if the file is empty
-            FileInputStream fis = new FileInputStream(unfinishedFiles);
-            ObjectInputStream ois = new ObjectInputStream(fis);
 
             //this should be our stored hash map that we read from the text file
-            HashMap<String, Integer> hashmap = (HashMap<String, Integer>)ois.readObject();
+            HashMap hashmap = null;
 
-            if(hashmap.containsKey(fileName)){
-                //search the hashmap for fileName
-                filePosition = String.valueOf(hashmap.get(fileName));
-            } else {
-                System.out.println("FileName does not exist in hashmap");
+            try {
+
+                FileInputStream fis = new FileInputStream(unfinishedFiles);
+                ObjectInputStream ois = new ObjectInputStream(fis);
+
+                hashmap = (HashMap) ois.readObject();
+
+                ois.close();
+                fis.close();
+
+                System.out.println("Deserialized HashMap...Checking for: " + fileName);
+
+                if(hashmap != null && hashmap.containsKey(fileName)){
+                    //search the hashmap for fileName
+                    filePosition = String.valueOf(hashmap.get(fileName));
+                } else {
+                    System.out.println(fileName + " does not exist in hashmap so first upload for this file.");
+                }
+
+            } catch(Exception e){
+                e.getMessage();
             }
 
-            ois.close();
-            fis.close();
-
         } else {
-            System.out.println("File/Hashmap do not exist so create it");
+            System.out.println("Hashmap do not exist...creating it");
             try {
                 if (unfinishedFiles.createNewFile()) {
                     System.out.println("File created: " + unfinishedFiles.getName());
                 } else {
-                    System.out.println("There was an error creating unfinishedFiles.txt.");
+                    System.out.println("There was an error creating unfinishedFiles.ser.");
                 }
             } catch (IOException e) {
                 System.out.println("An error occurred.");
                 e.printStackTrace();
             }
         }
+
         return filePosition;
     }
 
@@ -149,7 +160,6 @@ public class ClientServiceThread extends Thread {
             } while (bytesRead != -1);
 
             bos.write(baos.toByteArray());
-            System.out.println("Array on server while downloading:" + Arrays.toString(baos.toByteArray()));
 
             bos.close();
             fos.close();
@@ -161,7 +171,7 @@ public class ClientServiceThread extends Thread {
     }
 
     private void checkHashMap(String fileName, int filePosition) throws IOException, ClassNotFoundException {
-        File unfinishedFiles = new File("/Users/unfinishedFiles.txt");
+        File unfinishedFiles = new File("unfinishedFiles.ser");
 
         if(unfinishedFiles.exists()) {
             //we need to check if the file is empty
@@ -176,10 +186,10 @@ public class ClientServiceThread extends Thread {
                     updateHashMap(unfinishedFiles, fileName, filePosition);
 
                 } else {
-                    System.out.println("There was an error creating unfinishedFiles.txt.");
+                    System.out.println("There was an error creating unfinishedFiles.ser.");
                 }
             } catch (IOException e) {
-                System.out.println("An error occurred.");
+                System.out.println("An error occurred checking the hashmap.");
                 e.printStackTrace();
             }
         }
@@ -191,6 +201,7 @@ public class ClientServiceThread extends Thread {
             ObjectInputStream ois = new ObjectInputStream(fis);
 
             //this should be our stored hash map that we read from the text file
+            @SuppressWarnings("unchecked")
             HashMap<String, Integer> hashmap = (HashMap<String, Integer>)ois.readObject();
 
             hashmap.put(fileName, filePosition);
