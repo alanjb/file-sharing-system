@@ -135,10 +135,10 @@ public class Client {
             outToServer.writeLong(fileSize);
 
             int read = 0;
-            int totalRead = 0;
+//            int totalRead = 0;
             long remaining = fileSize;
             while (fis.read(buffer) > 0) {
-                totalRead += read;
+//                totalRead += read;
                 remaining -= read;
 
                 System.out.println(remaining + " bytes left to read" + "/" + fileSize + " total bytes");
@@ -150,8 +150,8 @@ public class Client {
 
             System.out.println("Finished sending file...");
 
-        } catch (Exception error) {
-            error.printStackTrace();
+        } catch (Exception e) {
+            e.getMessage();
         }
     }
 
