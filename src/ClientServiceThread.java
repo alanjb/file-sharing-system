@@ -4,6 +4,8 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 public class ClientServiceThread extends Thread {
     final DataInputStream dis;
@@ -51,10 +53,13 @@ public class ClientServiceThread extends Thread {
                     //CHECKING STATUS OF THIS FILE - three states: completely new file, unfinished file, file already exists
                     String filePosition = searchForUnfinishedFiles(fileName);
 
-                    System.out.println("File Position: " + filePosition);
+                    System.out.println("File Position at run(): " + filePosition);
+
+                    //if its null, file does not exist in hash map
 
                     if(filePosition != null){
-                        System.out.println("********** RESUMING FILE UPLOAD FOR " + fileName);
+                        System.out.println("*234234234234********* RESUMING FILE UPLOAD FOR " + fileName);
+                        System.out.println("FILEPOST HERE " + filePosition);
                         //send file position for this file back to client
                         this.dos.writeBoolean(true);
                         this.dos.writeUTF(filePosition);
@@ -66,6 +71,8 @@ public class ClientServiceThread extends Thread {
                     String serverPath = this.dis.readUTF();
 
                     Long fileSize = this.dis.readLong();
+
+                    System.out.println("STARTING RECEIVING...........");
 
                     receive(fileName, serverPath, fileSize);
                 }
@@ -82,49 +89,73 @@ public class ClientServiceThread extends Thread {
     }
 
     private String searchForUnfinishedFiles(String fileName) throws IOException, ClassNotFoundException {
-        //1. check if unfinishedFiles text file exists
         String filePosition = null;
-        File unfinishedFiles = new File("/Users/unfinishedFiles.ser");
+        File unfinishedFiles = new File("unfinishedFiles");
 
         if(unfinishedFiles.exists()) {
 
-            //this should be our stored hash map that we read from the text file
-            HashMap hashmap = null;
-
             try {
-
-                FileInputStream fis = new FileInputStream(unfinishedFiles);
+                FileInputStream fis = new FileInputStream("unfinishedFiles");
                 ObjectInputStream ois = new ObjectInputStream(fis);
 
-                hashmap = (HashMap) ois.readObject();
+                @SuppressWarnings("unchecked")
+                HashMap<String, Integer> hashmap = (HashMap<String, Integer>) ois.readObject();
+
+                Integer pos = hashmap.get(fileName);
+
+                System.out.println("POSITION::: " + pos);
 
                 ois.close();
                 fis.close();
 
                 System.out.println("Deserialized HashMap...Checking for: " + fileName);
+                System.out.println(" ");
 
-                if(hashmap != null && hashmap.containsKey(fileName)){
+                System.out.println("FILE POSITION!!!!: " + hashmap.get(fileName));
+
+                if(hashmap.containsKey(fileName)){
                     //search the hashmap for fileName
                     filePosition = String.valueOf(hashmap.get(fileName));
                 } else {
                     System.out.println(fileName + " does not exist in hashmap so first upload for this file.");
                 }
-
             } catch(Exception e){
-                e.getMessage();
+                e.printStackTrace();
             }
 
         } else {
-            System.out.println("Hashmap do not exist...creating it");
+            System.out.println("Hashmap file does not exist...creating it");
             try {
-                if (unfinishedFiles.createNewFile()) {
-                    System.out.println("File created: " + unfinishedFiles.getName());
-                } else {
-                    System.out.println("There was an error creating unfinishedFiles.ser.");
-                }
+                FileOutputStream fos = new FileOutputStream("unfinishedFiles");
+                ObjectOutputStream oos = new ObjectOutputStream(fos);
+
+                HashMap<String, Integer> map = new HashMap<>();
+
+                System.out.println("File created: " + unfinishedFiles.getName());
+
+                map.put(fileName, null);
+
+                System.out.println("TEST CONTENT: " + map.get(fileName));
+
+//                if(!map.isEmpty()) {
+//                    for (Map.Entry<String, Integer> stringIntegerEntry : map.entrySet()) {
+//                        Map.Entry obj = (Map.Entry) stringIntegerEntry;
+//                        System.out.println("Content: " + obj.getValue());
+//                    }
+//                }
+
+                //write hashmap to .ser file
+                oos.writeObject(map);
+
+                oos.close();
+                fos.close();
+
+                System.out.println("DONE CREATING HASHMAP INTO FILE");
+
+
             } catch (IOException e) {
                 System.out.println("An error occurred.");
-                e.printStackTrace();
+                e.getMessage();
             }
         }
 
@@ -136,82 +167,69 @@ public class ClientServiceThread extends Thread {
             byte[] buffer = new byte[Math.toIntExact(fileSize)];
 
             DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
             FileOutputStream fos = new FileOutputStream(filePath + File.separator + fileName);
-            BufferedOutputStream bos = new BufferedOutputStream(fos);
 
-            int bytesRead = dis.read(buffer, 0, buffer.length);
+            int bytesRead = 0;
+            int totalRead = 0;
+            long remaining = fileSize;
 
-            bos.write(buffer, 0, bytesRead);
+            System.out.println(" ");
+            System.out.println("*** UPLOAD PROGRESS ***");
 
-            int filePosition = 0;
+            while((bytesRead = dis.read(buffer, 0, (int) Math.min(buffer.length, remaining))) > 0) {
+                totalRead += bytesRead;
+                remaining -= bytesRead;
 
-            do {
-                baos.write(buffer);
-                bytesRead = dis.read(buffer);
+                System.out.println(remaining + " bytes left to read" + "/" + fileSize + " total bytes");
+                fos.write(buffer, 0, bytesRead);
 
                 if(bytesRead != -1){
-                    filePosition += bytesRead;
+                    FileOutputStream foss = new FileOutputStream("unfinishedFiles");
+                    ObjectOutputStream oos = new ObjectOutputStream(foss);
 
-                    //update hashmap
-                    checkHashMap(fileName, filePosition);
+                    HashMap<String, Integer> map = new HashMap<>();
+
+                    map.put(fileName, totalRead);
+
+                    System.out.println("Updating " + fileName + " with: " + map.get(fileName) + "bytes. Continuing....");
+
+                    oos.writeObject(map);
+
+                    foss.close();
+                    oos.close();
+
+                    if(remaining < 212612){
+                        System.out.println(" ");
+                        System.out.println("******");
+
+                        FileOutputStream fosss = new FileOutputStream("unfinishedFiles");
+                        ObjectOutputStream ooss = new ObjectOutputStream(fosss);
+
+                        HashMap<String, Integer> map1 = new HashMap<>();
+
+                        map1.put(fileName, bytesRead);
+
+                        System.out.println("Crashed at: " + map1.get(fileName) + "bytes. Please restart server to resume upload. ");
+
+                        oos.writeObject(map1);
+                        System.out.println("Saved bytes read up until: " + totalRead);
+
+                        fosss.close();
+                        ooss.close();
+
+                        break;
+                    }
+                } else if(bytesRead == -1){
+                    System.out.println("*** UPLOAD COMPLETE ***");
                 }
+            }
 
-            } while (bytesRead != -1);
-
-            bos.write(baos.toByteArray());
-
-            bos.close();
             fos.close();
             dis.close();
 
         } catch(Exception e){
-            e.getMessage();
+            e.printStackTrace();
         }
-    }
-
-    private void checkHashMap(String fileName, int filePosition) throws IOException, ClassNotFoundException {
-        File unfinishedFiles = new File("unfinishedFiles.ser");
-
-        if(unfinishedFiles.exists()) {
-            //we need to check if the file is empty
-            updateHashMap(unfinishedFiles, fileName, filePosition);
-
-        } else {
-            System.out.println("File/Hashmap do not exist so create it");
-            try {
-                if (unfinishedFiles.createNewFile()) {
-                    System.out.println("File created: " + unfinishedFiles.getName());
-
-                    updateHashMap(unfinishedFiles, fileName, filePosition);
-
-                } else {
-                    System.out.println("There was an error creating unfinishedFiles.ser.");
-                }
-            } catch (IOException e) {
-                System.out.println("An error occurred checking the hashmap.");
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private void updateHashMap(File unfinishedFiles, String fileName, int filePosition) throws IOException, ClassNotFoundException {
-        try{
-            FileInputStream fis = new FileInputStream(unfinishedFiles);
-            ObjectInputStream ois = new ObjectInputStream(fis);
-
-            //this should be our stored hash map that we read from the text file
-            @SuppressWarnings("unchecked")
-            HashMap<String, Integer> hashmap = (HashMap<String, Integer>)ois.readObject();
-
-            hashmap.put(fileName, filePosition);
-
-            ois.close();
-            fis.close();
-        } catch(Exception e){
-            e.getMessage();
-        }
-
     }
 
     private void removeDirectory(String existingFilePathOnServer) throws IOException {
