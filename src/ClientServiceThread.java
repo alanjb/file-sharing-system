@@ -184,21 +184,39 @@ public class ClientServiceThread extends Thread {
                 fos.write(buffer, 0, bytesRead);
 
                 if(bytesRead != -1){
-//                    checkHashMap(fileName, totalRead);
+                    FileOutputStream foss = new FileOutputStream("unfinishedFiles");
+                    ObjectOutputStream oos = new ObjectOutputStream(foss);
+
+                    HashMap<String, Integer> map = new HashMap<>();
+
+                    map.put(fileName, totalRead);
+
+                    System.out.println("Updating " + fileName + " with: " + map.get(fileName) + "bytes. Continuing....");
+
+                    oos.writeObject(map);
+
+                    foss.close();
+                    oos.close();
+
                     if(remaining < 212612){
-                        System.out.println("*** SIMULATING SERVER CRASH at 245276 bytes.............. ***");
                         System.out.println(" ");
+                        System.out.println("******");
 
-                        FileOutputStream foss = new FileOutputStream("unfinishedFiles");
-                        ObjectOutputStream oos = new ObjectOutputStream(foss);
+                        FileOutputStream fosss = new FileOutputStream("unfinishedFiles");
+                        ObjectOutputStream ooss = new ObjectOutputStream(fosss);
 
-                        HashMap<String, Integer> map = new HashMap<>();
+                        HashMap<String, Integer> map1 = new HashMap<>();
 
-                        map.put(fileName, bytesRead);
+                        map1.put(fileName, bytesRead);
 
-                        System.out.println("BTYES READ!!!!!!!: " + map.get(fileName));
+                        System.out.println("Crashed at: " + map1.get(fileName) + "bytes. Please restart server to resume upload. ");
 
-//                        System.out.println("Saved bytes read up until: " + totalRead);
+                        oos.writeObject(map1);
+                        System.out.println("Saved bytes read up until: " + totalRead);
+
+                        fosss.close();
+                        ooss.close();
+
                         break;
                     }
                 } else if(bytesRead == -1){
@@ -210,65 +228,7 @@ public class ClientServiceThread extends Thread {
             dis.close();
 
         } catch(Exception e){
-            e.getMessage();
-        }
-    }
-
-    //simulateServeCrash - setTimeOut
-
-    private void checkHashMap(String fileName, int filePosition) throws IOException, ClassNotFoundException {
-        File unfinishedFiles = new File("unfinishedFiles");
-
-        if(unfinishedFiles.exists()) {
-            System.out.println("unfinishedFiles exists. Now updating hashmap with new filePosition");
-
-            updateHashMap(unfinishedFiles, fileName, filePosition);
-
-        } else {
-            System.out.println("File/Hashmap do not exist so create it");
-            try {
-                if (unfinishedFiles.createNewFile()) {
-                    System.out.println("File created: " + unfinishedFiles.getName());
-
-                    updateHashMap(unfinishedFiles, fileName, filePosition);
-
-                } else {
-                    System.out.println("There was an error creating unfinishedFiles.");
-                }
-            } catch (IOException e) {
-                System.out.println("An error occurred checking the hashmap.");
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private void updateHashMap(File unfinishedFiles, String fileName, int filePosition) throws IOException, ClassNotFoundException {
-        System.out.println("******* UPDATING HASHMAP WITH CURRENT FILE POSITION.............. ***");
-
-        try {
-
-            FileInputStream fis = new FileInputStream(unfinishedFiles);
-            ObjectInputStream ois = new ObjectInputStream(fis);
-
-            FileOutputStream fos = new FileOutputStream(unfinishedFiles);
-            ObjectOutputStream oos = new ObjectOutputStream(fos);
-
-            @SuppressWarnings("unchecked")
-            HashMap<String, Integer> hashmap = (HashMap<String, Integer>) ois.readObject();
-
-            hashmap.put(fileName, filePosition);
-
-            System.out.println("File position: " + hashmap.get(fileName));
-
-            oos.writeObject(hashmap);
-
-            ois.close();
-            fis.close();
-            fos.close();
-            oos.close();
-
-        } catch(Exception e){
-            e.getMessage();
+            e.printStackTrace();
         }
     }
 
