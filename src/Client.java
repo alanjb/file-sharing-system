@@ -98,15 +98,12 @@ public class Client {
 
     private static void send(String filePathOnClient, String filePathOnServer) throws IOException {
         String command = "upload";
+
         File file = new File(filePathOnClient);
+        FileInputStream fis = new FileInputStream(filePathOnClient);
         long fileSize = file.length();
         byte[] buffer = new byte[(int) fileSize];
 
-        FileInputStream fis = new FileInputStream(file);
-
-//        BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file));
-
-        //send command type
         outToServer.writeUTF(command);
         System.out.println("Sending command type to server: " + command);
 
@@ -114,44 +111,38 @@ public class Client {
         outToServer.writeUTF(file.getName());
         System.out.println("Sending file name: " + file.getName());
 
+        //send path on server
+        outToServer.writeUTF(filePathOnServer);
+
         try {
-            //Server will send back if this file needs to finish uploading
-            if(inFromServer.readBoolean()){
-                //this means that an uploaded started but never finished so get filePosition
+
+            if(inFromServer.readBoolean()) {
+                System.out.println("RESUMING...starting skip");
+
                 String filePosition = inFromServer.readUTF();
 
-                //convert from String to integer
-                int filePos = Integer.parseInt(filePosition);
+                System.out.println("filePosition: " + filePosition);
 
-                //Advance the stream to the desired location in the file
+                long filePos = Long.parseLong(filePosition);
+
                 fis.skip(filePos);
 
+                System.out.println("filePosition: " + filePosition);
+
+                System.out.println("file data skipped");
             }
 
-            //send file path on server to server
-            outToServer.writeUTF(filePathOnServer);
 
-            //send file size to server
             outToServer.writeLong(fileSize);
 
-            int read = 0;
-//            int totalRead = 0;
-            long remaining = fileSize;
-            while (fis.read(buffer) > 0) {
-//                totalRead += read;
-                remaining -= read;
-
-                System.out.println(remaining + " bytes left to read" + "/" + fileSize + " total bytes");
+            while(fis.read(buffer) > 0){
                 outToServer.write(buffer);
             }
 
             fis.close();
-            outToServer.close();
 
-            System.out.println("Finished sending file...");
-
-        } catch (Exception e) {
-            e.getMessage();
+        } catch(Exception e){
+            e.printStackTrace();
         }
     }
 
