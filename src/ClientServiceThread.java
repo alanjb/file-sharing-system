@@ -105,8 +105,8 @@ public class ClientServiceThread extends Thread {
     private void receive(String fileName, String filePath, Long fileSize) throws IOException {
         try {
             DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
-            FileOutputStream fos = new FileOutputStream(filePath + File.separator + fileName, true);
-            byte[] buffer = new byte[Math.toIntExact(fileSize)];
+            FileOutputStream fos = new FileOutputStream(filePath + File.separator + fileName);
+            byte[] buffer = new byte[1024];
 
             int read = 0;
             int filePosition = 0;
@@ -122,14 +122,14 @@ public class ClientServiceThread extends Thread {
                 System.out.println("read " + filePosition + " bytes.");
                 fos.write(buffer, 0, read);
 
-                if(filePosition >= 300000){
-                    System.out.println(" ");
-                    System.out.println("******");
-
-                    System.out.println("*SIMULATING SERVER CRASH* Crashed: " + fileName + " at " + filePosition + " bytes. Please restart server to resume upload.");
-
-                    break;
-                }
+//                if(filePosition >= 30000){
+//                    System.out.println(" ");
+//                    System.out.println("******");
+//
+//                    System.out.println("*SIMULATING SERVER CRASH* Crashed: " + fileName + " at " + filePosition + " bytes. Please restart server to resume upload.");
+//
+//                    break;
+//                }
             }
 
             fos.close();

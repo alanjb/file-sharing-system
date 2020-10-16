@@ -102,7 +102,7 @@ public class Client {
         File file = new File(filePathOnClient);
         FileInputStream fis = new FileInputStream(filePathOnClient);
         long fileSize = file.length();
-        byte[] buffer = new byte[(int) fileSize];
+        byte[] buffer = new byte[1024];
 
         outToServer.writeUTF(command);
         System.out.println("Sending command type to server: " + command);
@@ -123,21 +123,42 @@ public class Client {
 
                 System.out.println("filePosition: " + filePosition);
 
-                long filePos = Long.parseLong(filePosition);
+                long fileSizeServer = Long.parseLong(filePosition);
 
-                fis.skip(filePos);
+//                fis.skip(fileSizeServer);
 
-                System.out.println("filePosition: " + filePosition);
+//                while(fileSizeServer > 0){
+//                    int startingPoint = 0;
+//                    long skipped = fis.skip(startingPoint);
+//                    if(skipped == fileSizeServer){
+//                        return;
+//                    } else {
+//                        fileSizeServer -= skipped;
+//                        System.out.println();
+//                        startingPoint++;
+//                    }
+//                }
+
+                for(int i=0; i<fileSizeServer; i++) {
+                    long skipped = fis.skip(i);
+                    System.out.println("Amount skipped: " + skipped);
+
+                    if (skipped == fileSizeServer) {
+                        break;
+                    }
+
+                    fileSizeServer -= skipped;
+                    System.out.println("Amount left to skip: " + fileSizeServer);
+                }
 
                 System.out.println("file data skipped");
             }
 
-
             outToServer.writeLong(fileSize);
 
-            while(fis.read(buffer) > 0){
-                outToServer.write(buffer);
-            }
+//            while(fis.read(buffer) > 0){
+//                outToServer.write(buffer);
+//            }
 
             fis.close();
 
