@@ -69,6 +69,15 @@ public class ClientServiceThread extends Thread {
                     Long fileSize = this.dis.readLong();
 
                     receive(fileName, serverPath, fileSize);
+                } else if(command.equalsIgnoreCase("download")){
+                    String serverPath = this.dis.readUTF();
+
+                    //call send method with specified file path on server
+                    send(serverPath);
+                } else if(command.equalsIgnoreCase("rm")){
+                    String serverPath = this.dis.readUTF();
+
+                    removeFile(serverPath);
                 }
             } catch (IOException | ClassNotFoundException e) {
                 e.printStackTrace();
@@ -82,10 +91,56 @@ public class ClientServiceThread extends Thread {
         }
     }
 
+    private void removeFile(String serverPath) throws IOException, FileNotFoundException {
+        File file = new File(serverPath);
+
+        try {
+            if(file.exists()){
+                this.dos.writeBoolean(true);
+                file.delete();
+
+            } else {
+                this.dos.writeBoolean(false);
+                System.out.println("There was an error. No file exists.");
+            }
+        } catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    private void send(String serverPath) throws IOException {
+        File file = new File(serverPath);
+
+        try {
+            if(file.exists()){
+                //send true that it exists
+                this.dos.writeBoolean(true);
+
+                //send fileSize
+                this.dos.writeLong(file.length());
+
+                //send file name
+                this.dos.writeUTF(file.getName());
+
+                FileInputStream fis = new FileInputStream(serverPath);
+                byte[] buffer = new byte[1024];
+
+                while(fis.read(buffer) > 0){
+                    dos.write(buffer);
+                }
+
+            } else {
+                //handle file does not exist
+            }
+        } catch(Exception e){
+            System.out.println("An error occurred sending file from Server");
+        }
+    }
+
     private String searchForUnfinishedFile(String fileName, String serverPath) throws IOException, ClassNotFoundException {
         String filePosition = null;
 
-        System.out.println("Server path to check: " + serverPath + File.separator + fileName );
+        System.out.println("Server path to check: " + serverPath + File.separator + fileName);
 
         File file = new File(serverPath + File.separator + fileName);
 
@@ -104,17 +159,12 @@ public class ClientServiceThread extends Thread {
 
     private void receive(String fileName, String filePath, Long fileSize) throws IOException {
         try {
-            DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
             FileOutputStream fos = new FileOutputStream(filePath + File.separator + fileName);
             byte[] buffer = new byte[1024];
 
             int read = 0;
             int filePosition = 0;
             int remaining = Math.toIntExact(fileSize);
-
-            System.out.println(" ");
-            System.out.println("STARTING UPLOAD...");
-            System.out.println(" ");
 
             while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
                 filePosition += read;
@@ -131,6 +181,8 @@ public class ClientServiceThread extends Thread {
 //                    break;
 //                }
             }
+
+            fos.flush();
 
             fos.close();
             dis.close();
