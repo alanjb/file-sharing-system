@@ -1,6 +1,6 @@
 import java.io.*;
 import java.net.*;
-import java.util.Arrays;
+import java.util.logging.Handler;
 
 public class Client {
     private static DataInputStream inFromServer = null;
@@ -49,10 +49,21 @@ public class Client {
         String userCommand = args[0];
 
         try {
-            if (userCommand.equalsIgnoreCase("send")) {
+            switch (userCommand) {
+                case "upload" -> {
+                    System.out.println("UPLOAD: Sending file to server...");
+                    send(args[1], args[2]);
+                }
+                case "download" -> {
+                    System.out.println("DOWNLOAD: Calling server to retrieve file...");
+                    receive(args[1], args[2]);
+                }
 
-                System.out.println("Saving file to server...");
-                send(args[1], args[2]);
+                case "rm" -> {
+                    System.out.println("REMOVE: Calling server to remove file...");
+                    removeFile(args[1]);
+                }
+                default -> System.out.println("test");
             }
 //            switch (userCommand) {
 //                case "upload":
@@ -96,13 +107,38 @@ public class Client {
         }
     }
 
+    private static void removeFile(String filePathOnServer) throws IOException, FileNotFoundException {
+        String command = "rm";
+
+        //send command to server
+        outToServer.writeUTF(command);
+
+        //send file path to server
+        outToServer.writeUTF(filePathOnServer);
+
+        boolean fileExists = inFromServer.readBoolean();
+
+        try {
+            //if file exists on server
+            if (!fileExists) {
+                System.err.println("404 ERROR: File does not exist on server.");
+            } else {
+                System.out.println("File removed.");
+            }
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+
     private static void send(String filePathOnClient, String filePathOnServer) throws IOException {
         String command = "upload";
 
         File file = new File(filePathOnClient);
         FileInputStream fis = new FileInputStream(filePathOnClient);
+        RandomAccessFile raf = new RandomAccessFile(filePathOnClient, "rw");
         long fileSize = file.length();
-        byte[] buffer = new byte[(int) fileSize];
+        byte[] buffer = new byte[1024];
 
         outToServer.writeUTF(command);
         System.out.println("Sending command type to server: " + command);
@@ -115,7 +151,6 @@ public class Client {
         outToServer.writeUTF(filePathOnServer);
 
         try {
-
             if(inFromServer.readBoolean()) {
                 System.out.println("RESUMING...starting skip");
 
@@ -123,15 +158,12 @@ public class Client {
 
                 System.out.println("filePosition: " + filePosition);
 
-                long filePos = Long.parseLong(filePosition);
+                long fileSizeServer = Long.parseLong(filePosition);
 
-                fis.skip(filePos);
-
-                System.out.println("filePosition: " + filePosition);
+                raf.seek(fileSizeServer);
 
                 System.out.println("file data skipped");
             }
-
 
             outToServer.writeLong(fileSize);
 
@@ -146,6 +178,57 @@ public class Client {
         }
     }
 
+    private static void receive(String filePathOnServer, String filePathOnClient) throws IOException {
+        String command = "download";
+
+        //send command to server
+        outToServer.writeUTF(command);
+
+        //send file path to server
+        outToServer.writeUTF(filePathOnServer);
+
+        //if file exists on server
+        if(inFromServer.readBoolean()){
+
+            //get file size from server
+            long fileSize = inFromServer.readLong();
+
+            //get file name from server
+            String fileName = inFromServer.readUTF();
+
+            try {
+                FileOutputStream fos = new FileOutputStream(filePathOnClient + File.separator + fileName);
+                byte[] buffer = new byte[1024];
+                int read = 0;
+                int filePosition = 0;
+                int remaining = Math.toIntExact(fileSize);
+
+                System.out.println("Starting download for " + fileName + "..." + "\n");
+
+                while((read = inFromServer.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
+                    filePosition += read;
+                    remaining -= read;
+                    System.out.println("read " + filePosition + " bytes / " + fileSize + " total bytes");
+                    fos.write(buffer, 0, read);
+                }
+
+                fos.close();
+
+                if(filePosition == fileSize){
+                    System.out.println("Finished download for " + fileName + "...");
+                } else {
+                    System.out.println("There was an error downloading " + fileName + ". Please try again.");
+                }
+
+
+            } catch(Exception e){
+                e.printStackTrace();
+            }
+        } else {
+            System.err.println("404 ERROR: File does not exist on server.");
+        }
+    }
+
     private static void removeDirectory(String filePathOnServer){
         String command = "rmDir";
         try {
@@ -157,7 +240,7 @@ public class Client {
             if(inFromServer.readBoolean()){
                 System.out.println("SUCCESS! The directory was removed at..." + filePathOnServer);
             } else {
-                System.out.println("ERROR! The directory could not be removed at..." + filePathOnServer);
+                System.err.println("404 ERROR: Directory does not exist on server.");
             }
 
         } catch(Exception e){
