@@ -63,41 +63,10 @@ public class Client {
                     System.out.println("REMOVE: Calling server to remove file...");
                     removeFile(args[1]);
                 }
-                default -> System.out.println("test");
+
+                default -> System.out.println("Please enter a valid command");
             }
-//            switch (userCommand) {
-//                case "upload":
-//                    System.out.println("Saving file to server...");
-//                    uploadFileToServer(filePathOnClient, filePathOnServer);
-//                    break;
-//                case "download":
-//                    // code block
-//                    System.out.println("Starting download...");
-////                    downloadFileFromServer(filePathOnServer, filePathOnClient);
-//                    break;
-//                case "dir":
-//                    System.out.println("Starting retrieval of all file objects...");
-//                    getDirectoryItems(filePathOnServer);
-//                    break;
-//                case "mkdir":
-//                    // code block
-//                    System.out.println("Creating directory server...");
-//                    createDirectory(filePathOnServer);
-//                    break;
-//                case "removeDirectory":
-//                    // code block
-//                    break;
-//                case "rmdir":
-//                    System.out.println("Starting remove directory...");
-//                    removeDirectory(filePathOnServer);
-//                    // code block
-//                    break;
-//                case "shutdown":
-//                    // code block
-//                    break;
-//                default:
-//                    // code block
-//            }
+
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -136,7 +105,7 @@ public class Client {
 
         File file = new File(filePathOnClient);
         FileInputStream fis = new FileInputStream(filePathOnClient);
-        RandomAccessFile raf = new RandomAccessFile(filePathOnClient, "rw");
+        RandomAccessFile raf = new RandomAccessFile(file, "rw");
         long fileSize = file.length();
         byte[] buffer = new byte[1024];
 
@@ -151,27 +120,27 @@ public class Client {
         outToServer.writeUTF(filePathOnServer);
 
         try {
-            if(inFromServer.readBoolean()) {
-                System.out.println("RESUMING...starting skip");
-
-                String filePosition = inFromServer.readUTF();
-
-                System.out.println("filePosition: " + filePosition);
-
-                long fileSizeServer = Long.parseLong(filePosition);
-
-                raf.seek(fileSizeServer);
-
-                System.out.println("file data skipped");
-            }
+//                System.out.println("RESUMING...starting skip");
+//
+//                String filePosition = inFromServer.readUTF();
+//
+//                System.out.println("filePosition: " + filePosition);
+//
+//                long fileSizeServer = Long.parseLong(filePosition);
+//
+//                raf.seek(fileSizeServer);
+//
+//                System.out.println("file data skipped");
 
             outToServer.writeLong(fileSize);
 
-            while(fis.read(buffer) > 0){
+            raf.seek(100352);
+
+            while(raf.read(buffer) > 0){
                 outToServer.write(buffer);
             }
 
-            fis.close();
+            raf.close();
 
         } catch(Exception e){
             e.printStackTrace();

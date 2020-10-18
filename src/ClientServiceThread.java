@@ -51,24 +51,25 @@ public class ClientServiceThread extends Thread {
                     String serverPath = this.dis.readUTF();
 
                     //CHECKING STATUS OF THIS FILE - three states: completely new file, unfinished file, file already exists
-                    String filePosition = searchForUnfinishedFile(fileName, serverPath);
+//                    String filePosition = searchForUnfinishedFile(fileName, serverPath);
 
-                    System.out.println("File Position at run(): " + filePosition);
+//                    System.out.println("File Position at run(): " + filePosition);
 
-                    if(filePosition != null){
-                        System.out.println("********** RESUMING FILE UPLOAD FOR " + fileName );
-                        System.out.println("FILEPOS HERE " + filePosition);
-                        //send file position for this file back to client
-                        this.dos.writeBoolean(true);
-                        this.dos.writeUTF(filePosition);
-                    } else {
-                        System.out.println("********** STARTING A NEW FILE UPLOAD FOR " + fileName);
-                        this.dos.writeBoolean(false);
-                    }
+//                    if(filePosition != null){
+//                        System.out.println("********** RESUMING FILE UPLOAD FOR " + fileName );
+//                        System.out.println("FILEPOS HERE " + filePosition);
+//                        //send file position for this file back to client
+//                        this.dos.writeBoolean(true);
+//                        this.dos.writeUTF(filePosition);
+//                    } else {
+//                        System.out.println("********** STARTING A NEW FILE UPLOAD FOR " + fileName);
+//                        this.dos.writeBoolean(false);
+//                    }
 
                     Long fileSize = this.dis.readLong();
 
                     receive(fileName, serverPath, fileSize);
+
                 } else if(command.equalsIgnoreCase("download")){
                     String serverPath = this.dis.readUTF();
 
@@ -79,7 +80,7 @@ public class ClientServiceThread extends Thread {
 
                     removeFile(serverPath);
                 }
-            } catch (IOException | ClassNotFoundException e) {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
 
@@ -137,29 +138,51 @@ public class ClientServiceThread extends Thread {
         }
     }
 
-    private String searchForUnfinishedFile(String fileName, String serverPath) throws IOException, ClassNotFoundException {
-        String filePosition = null;
+//    private String searchForUnfinishedFile(String fileName, String serverPath) throws IOException, ClassNotFoundException {
+//        String filePosition = null;
+//
+//        System.out.println("Server path to check: " + serverPath + File.separator + fileName);
+//
+//        File file = new File(serverPath + File.separator + fileName);
+//
+//        try {
+//            if(file.exists()) {
+//                //get the file length
+//                filePosition = String.valueOf(file.length());
+//            }
+//        } catch (Exception e) {
+//            System.out.println("An error occurred.");
+//            e.getMessage();
+//        }
+//
+//        return filePosition;
+//    }
 
-        System.out.println("Server path to check: " + serverPath + File.separator + fileName);
-
-        File file = new File(serverPath + File.separator + fileName);
+    private void receive(String fileName, String filePath, Long fileSize) throws IOException {
+        File file = new File(filePath + File.separator + fileName);
+        RandomAccessFile raf = new RandomAccessFile(file, "rw");
+//        FileOutputStream fos = new FileOutputStream(filePath + File.separator + fileName);
+        Long filePos = null;
 
         try {
-            if(file.exists()) {
+            if(file.exists() && !file.isDirectory()) {
                 //get the file length
-                filePosition = String.valueOf(file.length());
+                filePos = file.length();
+
+                System.out.println("File position:: " + filePos);
+
+                raf.seek(filePos);
+            } else {
+                System.out.println("FILE NOT FOUND");
             }
         } catch (Exception e) {
-            System.out.println("An error occurred.");
+            System.out.println("An error occurred attempting to find the file.");
             e.getMessage();
         }
 
-        return filePosition;
-    }
-
-    private void receive(String fileName, String filePath, Long fileSize) throws IOException {
         try {
-            FileOutputStream fos = new FileOutputStream(filePath + File.separator + fileName);
+//            FileOutputStream fos = new FileOutputStream(filePath + File.separator + fileName);
+
             byte[] buffer = new byte[1024];
 
             int read = 0;
@@ -170,9 +193,9 @@ public class ClientServiceThread extends Thread {
                 filePosition += read;
                 remaining -= read;
                 System.out.println("read " + filePosition + " bytes.");
-                fos.write(buffer, 0, read);
+                raf.write(buffer, 0, read);
 
-//                if(filePosition >= 30000){
+//                if(filePosition >= 100000){
 //                    System.out.println(" ");
 //                    System.out.println("******");
 //
@@ -182,9 +205,7 @@ public class ClientServiceThread extends Thread {
 //                }
             }
 
-            fos.flush();
-
-            fos.close();
+            dos.flush();
             dis.close();
 
             System.out.println(" ");
