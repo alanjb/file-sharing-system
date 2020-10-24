@@ -83,6 +83,8 @@ public class ClientServiceThread extends Thread {
                     String serverPath = this.dis.readUTF();
 
                     removeFile(serverPath);
+                } else if(command.equalsIgnoreCase("shutdown")){
+                    shutdown();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -94,6 +96,11 @@ public class ClientServiceThread extends Thread {
         } catch(IOException e) {
             e.getMessage();
         }
+    }
+
+    private static void shutdown(){
+        System.out.println("Terminating program...goodbye.");
+        System.exit(0);
     }
 
     private void removeFile(String serverPath) throws IOException, FileNotFoundException {

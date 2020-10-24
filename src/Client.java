@@ -79,6 +79,11 @@ public class Client {
                     removeFile(args[1]);
                 }
 
+                case "shutdown" -> {
+                    System.out.println("Shutting down server.");
+                    shutdown();
+                }
+
                 default -> System.out.println("Please enter a valid command");
             }
 
@@ -89,6 +94,11 @@ public class Client {
                 clientSocket.close();
             }
         }
+    }
+
+    private static void shutdown() throws IOException {
+        String command = "shutdown";
+        outToServer.writeUTF(command);
     }
 
     private static void removeFile(String filePathOnServer) throws IOException, FileNotFoundException {
