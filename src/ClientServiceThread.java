@@ -272,6 +272,7 @@ public class ClientServiceThread extends Thread {
             } else {
                 System.out.println("ERROR: This directory already exists. Please try again...");
                 this.dos.writeBoolean(false);
+                this.dos.writeInt(1);
             }
 
         } catch(Exception e){

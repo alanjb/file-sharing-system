@@ -69,6 +69,16 @@ public class Client {
                     removeFile(args[1]);
                 }
 
+                case "mkdir" -> {
+                    System.out.println("Create directory: Calling server to remove file...");
+                    mkdir(args[1]);
+                }
+
+                case "rmdir" -> {
+                    System.out.println("Remove directory: Calling server to remove file...");
+                    rmdir(args[1]);
+                }
+
                 default -> System.out.println("Please enter a valid command");
             }
 
@@ -204,7 +214,7 @@ public class Client {
         }
     }
 
-    private static void removeDirectory(String filePathOnServer){
+    private static void rmdir(String filePathOnServer){
         String command = "rmDir";
         try {
             System.out.println("Sending request to remove directory ...");
@@ -249,7 +259,7 @@ public class Client {
         }
     }
 
-    private static void createDirectory(String filePathOnServer) throws IOException {
+    private static void mkdir(String filePathOnServer) throws IOException {
         String command = "mkdir";
 
         //transfer file name to server
@@ -262,10 +272,14 @@ public class Client {
             if (inFromServer.readBoolean()) {
                 System.out.println("Successfully created directory at: " + filePathOnServer);
             } else {
-                System.out.println("ERROR: couldn't creat directory at: " + filePathOnServer);
 
-                //reason for error from server here!!!
+                int errorCode = inFromServer.readInt();
 
+                if(errorCode == 1){
+                    System.out.println("400 ERROR: Couldn't create directory at: " + filePathOnServer + " because it already exists. Please try again.");
+                } else {
+                    System.out.println("400 ERROR: Couldn't create directory at: " + filePathOnServer + ". Please try again.");
+                }
             }
         } catch (Exception e) {
             System.out.println("ERROR: " + e.getMessage());
