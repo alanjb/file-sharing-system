@@ -197,7 +197,7 @@ public class Client {
                 }
 
             } else {
-                System.err.println("404 ERROR: File does not exist on server.");
+                System.err.println("404 ERROR: File does not exist on server. Please try again.");
             }
         } catch(Exception e){
             e.printStackTrace();
@@ -233,21 +233,19 @@ public class Client {
             System.out.println("Retrieving directory items...");
 
             outToServer.writeUTF(command);
-            outToServer.flush();
+
             outToServer.writeUTF(filePathOnServer);
-            outToServer.flush();
 
             if(inFromServer.readBoolean()) {
+                System.out.println("Directory items in " + filePathOnServer + ": \n");
                 System.out.println(inFromServer.readUTF());
-                System.out.println("Done on client...");
             } else {
-                System.out.println("ERROR: This directory does not exist...");
+                System.out.println("404 ERROR: directory does not exist. Please try again.");
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-//            closeStreams();
+
         }
     }
 

@@ -238,9 +238,9 @@ public class ClientServiceThread extends Thread {
         try {
             if(directoryToSend.isDirectory()){
                 this.dos.writeBoolean(true);
-                File [] dir = directoryToSend.listFiles();
+                File[] dir = directoryToSend.listFiles();
                 this.dos.writeUTF(Arrays.toString(dir));
-                System.out.println("***Done on server...");
+                System.out.println("Sending directory items...");
             } else {
                 System.out.println("ERROR: Directory " + existingFilePathOnServer + " does not exist...");
                 this.dos.writeBoolean(false);
