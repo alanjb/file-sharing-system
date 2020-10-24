@@ -60,7 +60,8 @@ public class Client {
                 }
 
                 case "dir" -> {
-                    
+                    System.out.println("List: Calling server to retrieve directory items...");
+                    dir(args[1]);
                 }
 
                 case "rm" -> {
@@ -225,7 +226,7 @@ public class Client {
         }
     }
 
-    private static void getDirectoryItems(String filePathOnServer) {
+    private static void dir(String filePathOnServer) {
         String command = "dir";
 
         try {
