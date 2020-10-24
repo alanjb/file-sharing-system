@@ -106,7 +106,7 @@ public class ClientServiceThread extends Thread {
 
             } else {
                 this.dos.writeBoolean(false);
-                System.out.println("There was an error. No file exists.");
+                System.out.println("There was an error. No such file exists.");
             }
         } catch(Exception e){
             e.printStackTrace();

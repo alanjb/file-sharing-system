@@ -64,11 +64,6 @@ public class Client {
                     dir(args[1]);
                 }
 
-                case "rm" -> {
-                    System.out.println("REMOVE: Calling server to remove file...");
-                    removeFile(args[1]);
-                }
-
                 case "mkdir" -> {
                     System.out.println("Create directory: Calling server to remove file...");
                     mkdir(args[1]);
@@ -77,6 +72,11 @@ public class Client {
                 case "rmdir" -> {
                     System.out.println("Remove directory: Calling server to remove file...");
                     rmdir(args[1]);
+                }
+
+                case "rm" -> {
+                    System.out.println("Remove file: Calling server to remove file...");
+                    removeFile(args[1]);
                 }
 
                 default -> System.out.println("Please enter a valid command");
@@ -105,9 +105,9 @@ public class Client {
         try {
             //if file exists on server
             if (!fileExists) {
-                System.err.println("404 ERROR: File does not exist on server.");
+                System.err.println("404 ERROR: File does not exist on server. Please try again.");
             } else {
-                System.out.println("File removed.");
+                System.out.println(filePathOnServer + " has been removed.");
             }
         }
         catch(Exception e){
@@ -233,7 +233,6 @@ public class Client {
                     System.err.println("404 ERROR: Directory does not exist on server. Please try again.");
                 }
             }
-
         } catch(Exception e){
             System.err.println("404 ERROR: There was an error trying to remove the directory.");
             e.printStackTrace();
