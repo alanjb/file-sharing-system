@@ -36,7 +36,7 @@ public class Client {
             runCommand(args);
 
         } catch (Exception error) {
-            System.out.println("Error: there was an issue connecting to the server: " + error);
+            System.out.println("503 Service Unavailable: there was an issue connecting to the server: " + error);
         }
     }
 
@@ -59,45 +59,18 @@ public class Client {
                     receive(args[1], args[2]);
                 }
 
+                case "dir" -> {
+                    
+                }
+
                 case "rm" -> {
                     System.out.println("REMOVE: Calling server to remove file...");
                     removeFile(args[1]);
                 }
-                default -> System.out.println("test");
+
+                default -> System.out.println("Please enter a valid command");
             }
-//            switch (userCommand) {
-//                case "upload":
-//                    System.out.println("Saving file to server...");
-//                    uploadFileToServer(filePathOnClient, filePathOnServer);
-//                    break;
-//                case "download":
-//                    // code block
-//                    System.out.println("Starting download...");
-////                    downloadFileFromServer(filePathOnServer, filePathOnClient);
-//                    break;
-//                case "dir":
-//                    System.out.println("Starting retrieval of all file objects...");
-//                    getDirectoryItems(filePathOnServer);
-//                    break;
-//                case "mkdir":
-//                    // code block
-//                    System.out.println("Creating directory server...");
-//                    createDirectory(filePathOnServer);
-//                    break;
-//                case "removeDirectory":
-//                    // code block
-//                    break;
-//                case "rmdir":
-//                    System.out.println("Starting remove directory...");
-//                    removeDirectory(filePathOnServer);
-//                    // code block
-//                    break;
-//                case "shutdown":
-//                    // code block
-//                    break;
-//                default:
-//                    // code block
-//            }
+
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -133,13 +106,12 @@ public class Client {
 
     private static void send(String filePathOnClient, String filePathOnServer) throws IOException {
         String command = "upload";
-
         File file = new File(filePathOnClient);
-        FileInputStream fis = new FileInputStream(filePathOnClient);
-        RandomAccessFile raf = new RandomAccessFile(filePathOnClient, "rw");
+        RandomAccessFile raf = new RandomAccessFile(file, "rw");
         long fileSize = file.length();
         byte[] buffer = new byte[1024];
 
+        //send command to server
         outToServer.writeUTF(command);
         System.out.println("Sending command type to server: " + command);
 
@@ -151,27 +123,28 @@ public class Client {
         outToServer.writeUTF(filePathOnServer);
 
         try {
-            if(inFromServer.readBoolean()) {
-                System.out.println("RESUMING...starting skip");
+//                System.out.println("RESUMING...starting skip");
+//
+//                String filePosition = inFromServer.readUTF();
+//
+//                System.out.println("filePosition: " + filePosition);
+//
+//                long fileSizeServer = Long.parseLong(filePosition);
+//
+//                raf.seek(fileSizeServer);
+//
+//                System.out.println("file data skipped");
 
-                String filePosition = inFromServer.readUTF();
-
-                System.out.println("filePosition: " + filePosition);
-
-                long fileSizeServer = Long.parseLong(filePosition);
-
-                raf.seek(fileSizeServer);
-
-                System.out.println("file data skipped");
-            }
-
+            //send file size to server
             outToServer.writeLong(fileSize);
 
-            while(fis.read(buffer) > 0){
+//            raf.seek(100352);
+
+            while(raf.read(buffer) > 0){
                 outToServer.write(buffer);
             }
 
-            fis.close();
+            raf.close();
 
         } catch(Exception e){
             e.printStackTrace();
@@ -187,16 +160,18 @@ public class Client {
         //send file path to server
         outToServer.writeUTF(filePathOnServer);
 
-        //if file exists on server
-        if(inFromServer.readBoolean()){
+        try {
+            //if file exists on server
+            if(inFromServer.readBoolean()){
+                System.out.println("File exists on server...");
 
-            //get file size from server
-            long fileSize = inFromServer.readLong();
+                //get file size from server
+                long fileSize = inFromServer.readLong();
 
-            //get file name from server
-            String fileName = inFromServer.readUTF();
+                //get file name from server
+                String fileName = inFromServer.readUTF();
 
-            try {
+
                 FileOutputStream fos = new FileOutputStream(filePathOnClient + File.separator + fileName);
                 byte[] buffer = new byte[1024];
                 int read = 0;
@@ -220,12 +195,11 @@ public class Client {
                     System.out.println("There was an error downloading " + fileName + ". Please try again.");
                 }
 
-
-            } catch(Exception e){
-                e.printStackTrace();
+            } else {
+                System.err.println("404 ERROR: File does not exist on server.");
             }
-        } else {
-            System.err.println("404 ERROR: File does not exist on server.");
+        } catch(Exception e){
+            e.printStackTrace();
         }
     }
 
