@@ -1,12 +1,8 @@
 import java.io.*;
 import java.net.*;
 import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
+import java.nio.file.*;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.concurrent.locks.Lock;
 
 public class ClientServiceThread extends Thread {
@@ -207,11 +203,15 @@ public class ClientServiceThread extends Thread {
 
     private void removeDirectory(String existingFilePathOnServer) throws IOException {
         try{
+            Path path = Paths.get(existingFilePathOnServer);
+
             File file = new File(existingFilePathOnServer);
+
+            Files.isDirectory(path);
             // check if directory is empty
             if (file.isDirectory()) {
                 String[] list = file.list();
-                if (list == null || list.length == 0) {
+                if (list.length == 0) {
                     System.out.println("Directory is empty! Deleting...");
                     file.delete();
                     this.dos.writeBoolean(true);
