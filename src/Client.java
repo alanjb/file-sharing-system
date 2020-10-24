@@ -225,12 +225,18 @@ public class Client {
             if(inFromServer.readBoolean()){
                 System.out.println("SUCCESS! The directory was removed at..." + filePathOnServer);
             } else {
-                System.err.println("404 ERROR: Directory does not exist on server.");
+                int errorCode = inFromServer.readInt();
+
+                if(errorCode == 1){
+                    System.err.println("404 ERROR: Directory contains items so it cannot be removed. Please try again");
+                } else if(errorCode == 2){
+                    System.err.println("404 ERROR: Directory does not exist on server. Please try again.");
+                }
             }
 
         } catch(Exception e){
+            System.err.println("404 ERROR: There was an error trying to remove the directory.");
             e.printStackTrace();
-            e.getMessage();
         } finally {
 
         }
@@ -287,6 +293,4 @@ public class Client {
 //                CloseAllStreams();
         }
     }
-
-
 }

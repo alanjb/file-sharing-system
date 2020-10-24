@@ -211,10 +211,12 @@ public class ClientServiceThread extends Thread {
                 } else {
                     System.out.println("Directory is not empty! Unable to delete.");
                     this.dos.writeBoolean(false);
+                    this.dos.writeInt(1);
                 }
             } else {
                 System.out.println("This directory does not exist. Please try again...");
                 this.dos.writeBoolean(false);
+                this.dos.writeInt(2);
             }
         } catch(Exception e){
             this.dos.writeBoolean(false);
