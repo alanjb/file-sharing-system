@@ -36,7 +36,7 @@ public class Client {
             runCommand(args);
 
         } catch (Exception error) {
-            System.out.println("Error: there was an issue connecting to the server: " + error);
+            System.out.println("503 Service Unavailable: there was an issue connecting to the server: " + error);
         }
     }
 
@@ -57,6 +57,10 @@ public class Client {
                 case "download" -> {
                     System.out.println("DOWNLOAD: Calling server to retrieve file...");
                     receive(args[1], args[2]);
+                }
+
+                case "dir" -> {
+                    
                 }
 
                 case "rm" -> {
@@ -102,13 +106,12 @@ public class Client {
 
     private static void send(String filePathOnClient, String filePathOnServer) throws IOException {
         String command = "upload";
-
         File file = new File(filePathOnClient);
-        FileInputStream fis = new FileInputStream(filePathOnClient);
         RandomAccessFile raf = new RandomAccessFile(file, "rw");
         long fileSize = file.length();
         byte[] buffer = new byte[1024];
 
+        //send command to server
         outToServer.writeUTF(command);
         System.out.println("Sending command type to server: " + command);
 
@@ -132,9 +135,10 @@ public class Client {
 //
 //                System.out.println("file data skipped");
 
+            //send file size to server
             outToServer.writeLong(fileSize);
 
-            raf.seek(100352);
+//            raf.seek(100352);
 
             while(raf.read(buffer) > 0){
                 outToServer.write(buffer);
@@ -156,16 +160,18 @@ public class Client {
         //send file path to server
         outToServer.writeUTF(filePathOnServer);
 
-        //if file exists on server
-        if(inFromServer.readBoolean()){
+        try {
+            //if file exists on server
+            if(inFromServer.readBoolean()){
+                System.out.println("File exists on server...");
 
-            //get file size from server
-            long fileSize = inFromServer.readLong();
+                //get file size from server
+                long fileSize = inFromServer.readLong();
 
-            //get file name from server
-            String fileName = inFromServer.readUTF();
+                //get file name from server
+                String fileName = inFromServer.readUTF();
 
-            try {
+
                 FileOutputStream fos = new FileOutputStream(filePathOnClient + File.separator + fileName);
                 byte[] buffer = new byte[1024];
                 int read = 0;
@@ -189,12 +195,11 @@ public class Client {
                     System.out.println("There was an error downloading " + fileName + ". Please try again.");
                 }
 
-
-            } catch(Exception e){
-                e.printStackTrace();
+            } else {
+                System.err.println("404 ERROR: File does not exist on server.");
             }
-        } else {
-            System.err.println("404 ERROR: File does not exist on server.");
+        } catch(Exception e){
+            e.printStackTrace();
         }
     }
 

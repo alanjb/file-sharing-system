@@ -1,9 +1,13 @@
 import java.io.*;
 import java.net.*;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.concurrent.locks.Lock;
 
 public class ClientServiceThread extends Thread {
     final DataInputStream dis;
@@ -132,89 +136,65 @@ public class ClientServiceThread extends Thread {
 
             } else {
                 //handle file does not exist
+                this.dos.writeBoolean(false);
             }
         } catch(Exception e){
+            this.dos.writeBoolean(false);
             System.out.println("An error occurred sending file from Server");
         }
     }
 
-//    private String searchForUnfinishedFile(String fileName, String serverPath) throws IOException, ClassNotFoundException {
-//        String filePosition = null;
-//
-//        System.out.println("Server path to check: " + serverPath + File.separator + fileName);
-//
-//        File file = new File(serverPath + File.separator + fileName);
-//
-//        try {
-//            if(file.exists()) {
-//                //get the file length
-//                filePosition = String.valueOf(file.length());
-//            }
-//        } catch (Exception e) {
-//            System.out.println("An error occurred.");
-//            e.getMessage();
-//        }
-//
-//        return filePosition;
-//    }
-
     private void receive(String fileName, String filePath, Long fileSize) throws IOException {
-        File file = new File(filePath + File.separator + fileName);
+        String pathToFile = filePath + File.separator + fileName;
+        File file = new File(pathToFile);
         RandomAccessFile raf = new RandomAccessFile(file, "rw");
-//        FileOutputStream fos = new FileOutputStream(filePath + File.separator + fileName);
+        FileChannel channel = raf.getChannel();
         Long filePos = null;
+        byte[] buffer = new byte[1024];
+        int read = 0;
+        int filePosition = 0;
+        int remaining = Math.toIntExact(fileSize);
 
         try {
             if(file.exists() && !file.isDirectory()) {
-                //get the file length
+                if(!channel.isOpen()){
+                //get the file length and pass it back to Client to seek()
                 filePos = file.length();
+                dos.writeLong(filePos);
+                //raf.seek(filePos);
 
-                System.out.println("File position:: " + filePos);
+                } else {
+                    //empty bytes
+                    raf.setLength(0);
 
-                raf.seek(filePos);
+                    Lock lock = (Lock) channel.lock();
+
+                    while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
+                        filePosition += read;
+                        remaining -= read;
+                        //System.out.println("read " + filePosition + " bytes.");
+                        raf.write(buffer, 0, read);
+
+                        if(filePosition >= 100000){
+                            System.out.println(" ");
+                            System.out.println("******");
+                            System.out.println("*SIMULATING SERVER CRASH* Crashed: " + fileName + " at " + filePosition + " bytes. Please restart server to resume upload.");
+                            break;
+                        }
+                    }
+                }
             } else {
-                System.out.println("FILE NOT FOUND");
+                System.out.println("File does not exist. Continuing upload...\n");
             }
         } catch (Exception e) {
             System.out.println("An error occurred attempting to find the file.");
             e.getMessage();
-        }
-
-        try {
-//            FileOutputStream fos = new FileOutputStream(filePath + File.separator + fileName);
-
-            byte[] buffer = new byte[1024];
-
-            int read = 0;
-            int filePosition = 0;
-            int remaining = Math.toIntExact(fileSize);
-
-            while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
-                filePosition += read;
-                remaining -= read;
-                System.out.println("read " + filePosition + " bytes.");
-                raf.write(buffer, 0, read);
-
-//                if(filePosition >= 100000){
-//                    System.out.println(" ");
-//                    System.out.println("******");
-//
-//                    System.out.println("*SIMULATING SERVER CRASH* Crashed: " + fileName + " at " + filePosition + " bytes. Please restart server to resume upload.");
-//
-//                    break;
-//                }
-            }
-
+        } finally {
             dos.flush();
             dis.close();
 
             System.out.println(" ");
             System.out.println("FINISHED UPLOAD...");
-
-        } catch(Exception e){
-            e.printStackTrace();
-        } finally {
-
         }
     }
 
