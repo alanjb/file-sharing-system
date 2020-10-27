@@ -1,6 +1,5 @@
 import java.io.*;
 import java.net.*;
-import java.util.logging.Handler;
 
 public class Client {
     private static DataInputStream inFromServer = null;
@@ -144,25 +143,40 @@ public class Client {
         outToServer.writeUTF(filePathOnServer);
 
         try {
-//                System.out.println("RESUMING...starting skip");
-//
-//                String filePosition = inFromServer.readUTF();
-//
-//                System.out.println("filePosition: " + filePosition);
-//
-//                long fileSizeServer = Long.parseLong(filePosition);
-//
-//                raf.seek(fileSizeServer);
-//
-//                System.out.println("file data skipped");
+
+                System.out.println("RESUMING...starting skip");
+
+                String filePos = inFromServer.readUTF();
+
+                System.out.println("filePosition: " + filePos);
+
+                long fileSizeServer = Long.parseLong(filePos);
+
+                raf.seek(fileSizeServer);
+
+                System.out.println("file data skipped");
 
             //send file size to server
             outToServer.writeLong(fileSize);
 
 //            raf.seek(100352);
 
-            while(raf.read(buffer) > 0){
+            int read = 0;
+            int filePosition = 0;
+            int remaining = Math.toIntExact(fileSize);
+
+            System.out.print("Uploading file...");
+            while((read = raf.read(buffer, 0, Math.min(buffer.length, remaining))) > 0){
+                filePosition += read;
+                remaining -= read;
+                System.out.print("\r Uploading file..." + (int)((double)(filePosition)/fileSize * 100) + "%");
                 outToServer.write(buffer);
+            }
+
+            if(filePosition == fileSize){
+                System.out.println("\n File Uploaded");
+            } else {
+                System.out.println("There was an interruption when uploading file. Please retry to complete.");
             }
 
             raf.close();

@@ -44,27 +44,9 @@ public class ClientServiceThread extends Thread {
                     System.out.println("FILE PATH ON SERVER TO DELETE SELECTED: " + existingFilePathOnServer);
                     removeDirectory(existingFilePathOnServer);
                 } else if(command.equalsIgnoreCase("upload")){
-                    System.out.println("UPLOADING FILE TO SERVER");
-
                     String fileName = this.dis.readUTF();
 
                     String serverPath = this.dis.readUTF();
-
-                    //CHECKING STATUS OF THIS FILE - three states: completely new file, unfinished file, file already exists
-//                    String filePosition = searchForUnfinishedFile(fileName, serverPath);
-
-//                    System.out.println("File Position at run(): " + filePosition);
-
-//                    if(filePosition != null){
-//                        System.out.println("********** RESUMING FILE UPLOAD FOR " + fileName );
-//                        System.out.println("FILEPOS HERE " + filePosition);
-//                        //send file position for this file back to client
-//                        this.dos.writeBoolean(true);
-//                        this.dos.writeUTF(filePosition);
-//                    } else {
-//                        System.out.println("********** STARTING A NEW FILE UPLOAD FOR " + fileName);
-//                        this.dos.writeBoolean(false);
-//                    }
 
                     Long fileSize = this.dis.readLong();
 
@@ -152,52 +134,39 @@ public class ClientServiceThread extends Thread {
         File file = new File(pathToFile);
         RandomAccessFile raf = new RandomAccessFile(file, "rw");
         FileChannel channel = raf.getChannel();
-        Long filePos = null;
         byte[] buffer = new byte[1024];
         int read = 0;
         int filePosition = 0;
         int remaining = Math.toIntExact(fileSize);
 
         try {
-            if(file.exists() && !file.isDirectory()) {
-                if(!channel.isOpen()){
-                //get the file length and pass it back to Client to seek()
-                filePos = file.length();
-                dos.writeLong(filePos);
-                //raf.seek(filePos);
+            while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
+                filePosition += read;
+                remaining -= read;
+                System.out.print("\r Downloading file..." + (int)((double)(filePosition)/fileSize * 100) + "%");
+                raf.write(buffer, 0, read);
 
-                } else {
-                    //empty bytes
-                    raf.setLength(0);
-
-                    Lock lock = (Lock) channel.lock();
-
-                    while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
-                        filePosition += read;
-                        remaining -= read;
-                        //System.out.println("read " + filePosition + " bytes.");
-                        raf.write(buffer, 0, read);
-
-                        if(filePosition >= 100000){
-                            System.out.println(" ");
-                            System.out.println("******");
-                            System.out.println("*SIMULATING SERVER CRASH* Crashed: " + fileName + " at " + filePosition + " bytes. Please restart server to resume upload.");
-                            break;
-                        }
-                    }
-                }
-            } else {
-                System.out.println("File does not exist. Continuing upload...\n");
+//                if(filePosition >= 100000){
+//                    System.out.println(" ");
+//                    System.out.println("******");
+//                    System.out.println("*SIMULATING SERVER CRASH* Crashed: " + fileName + " at " + filePosition + " bytes. Please restart server to resume upload.");
+//                    break;
+//                }
             }
+
+
+            if(filePosition == fileSize){
+                System.out.println("\n File Downloaded");
+            } else {
+                System.out.println("\n There was an interruption when uploading file. Please retry to complete.");
+            }
+
         } catch (Exception e) {
-            System.out.println("An error occurred attempting to find the file.");
+            System.out.println("An error occurred attempting to receive file on server.");
             e.getMessage();
         } finally {
             dos.flush();
             dis.close();
-
-            System.out.println(" ");
-            System.out.println("FINISHED UPLOAD...");
         }
     }
 
