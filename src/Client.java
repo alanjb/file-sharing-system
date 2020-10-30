@@ -5,7 +5,6 @@ public class Client {
     private static DataInputStream inFromServer = null;
     private static DataOutputStream outToServer = null;
     private static Socket clientSocket = null;
-    private static boolean isRunning = false;
 
     public static void main(String[] args) throws IOException {
         String serverName = System.getenv("PA1_SERVER");
@@ -14,7 +13,7 @@ public class Client {
             try {
                 String[] vars = System.getenv("PA1_SERVER").split(":");
                 String server = vars[0];
-                Integer port = Integer.parseInt(vars[1]);
+                int port = Integer.parseInt(vars[1]);
 
                 init(server, port, args);
             } catch (Exception error) {
@@ -25,7 +24,6 @@ public class Client {
         }
     }
 
-    //Method is used to connect to server
     private static void init(String server, int port, String[] args) {
         try {
             clientSocket = new Socket(server, port);
@@ -37,6 +35,19 @@ public class Client {
         } catch (Exception error) {
             System.out.println("503 Service Unavailable: there was an issue connecting to the server: " + error);
         }
+    }
+
+    private static String getExecutionPath(){
+        String executionPath = null;
+
+        try {
+            executionPath = System.getProperty("user.dir");
+            System.out.print("Executing at => " + executionPath.replace("\\", "/"));
+        } catch(Exception e){
+            System.out.println("Exception caught ="+e.getMessage());
+        }
+
+        return executionPath;
     }
 
     private static void initStreams() throws IOException {
@@ -51,7 +62,7 @@ public class Client {
             switch (userCommand) {
                 case "upload" -> {
                     System.out.println("UPLOAD: Sending file to server...");
-                    send(args[1], args[2]);
+                    upload(args[1], args[2]);
                 }
                 case "download" -> {
                     System.out.println("DOWNLOAD: Calling server to retrieve file...");
@@ -124,57 +135,59 @@ public class Client {
         }
     }
 
-    private static void send(String filePathOnClient, String filePathOnServer) throws IOException {
+    private static void upload(String filePathOnClient, String filePathOnServer) throws IOException {
         String command = "upload";
         File file = new File(filePathOnClient);
         RandomAccessFile raf = new RandomAccessFile(file, "rw");
         long fileSize = file.length();
         byte[] buffer = new byte[1024];
+        String fileName = file.getName();
 
         //send command to server
         outToServer.writeUTF(command);
         System.out.println("Sending command type to server: " + command);
 
         //send file name to server
-        outToServer.writeUTF(file.getName());
+        outToServer.writeUTF(fileName);
         System.out.println("Sending file name: " + file.getName());
+
+        //send client name to server
+        String clientName = getExecutionPath();
+        outToServer.writeUTF(clientName);
+        System.out.println("Sending client's name to keep track in case of crash" + file.getName());
 
         //send path on server
         outToServer.writeUTF(filePathOnServer);
+        System.out.println("Sending file path on server: " + filePathOnServer);
+
+        //send file size to server
+        outToServer.writeLong(fileSize);
+        System.out.println("Sending file size: " + fileSize);
 
         try {
-
-                System.out.println("RESUMING...starting skip");
-
-                String filePos = inFromServer.readUTF();
-
-                System.out.println("filePosition: " + filePos);
-
-                long fileSizeServer = Long.parseLong(filePos);
-
-                raf.seek(fileSizeServer);
-
-                System.out.println("file data skipped");
-
-            //send file size to server
-            outToServer.writeLong(fileSize);
-
-//            raf.seek(100352);
+            if(inFromServer.readBoolean()){
+                System.out.println("Resuming upload for file: " + fileName);
+                long unfinishedFileSizeOnServer = inFromServer.readLong();
+                raf.seek(unfinishedFileSizeOnServer);
+            }
 
             int read = 0;
             int filePosition = 0;
             int remaining = Math.toIntExact(fileSize);
 
-            System.out.print("Uploading file...");
             while((read = raf.read(buffer, 0, Math.min(buffer.length, remaining))) > 0){
                 filePosition += read;
                 remaining -= read;
-                System.out.print("\r Uploading file..." + (int)((double)(filePosition)/fileSize * 100) + "%");
+                System.out.print(
+                        "\r Uploading file..."
+                        + (int)((double)(filePosition)/fileSize * 100)
+                        + "%"
+                );
                 outToServer.write(buffer);
             }
 
             if(filePosition == fileSize){
-                System.out.println("\n File Uploaded");
+                System.out.println("\n File Upload Complete");
             } else {
                 System.out.println("There was an interruption when uploading file. Please retry to complete.");
             }

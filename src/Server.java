@@ -3,10 +3,8 @@ import java.net.*;
 
 public class Server {
     private static ServerSocket serverSocket = null;
-    private static boolean isRunning = false;
 
     public static void main(String[] args) throws IOException {
-        //checking if error entered 'start' to run the system and the port number (port can be any number really)
         boolean errorAtStart = args.length != 2;
 
         System.out.println("*** Starting File System ***");
@@ -26,18 +24,16 @@ public class Server {
                 run();
             }
         } catch(Exception e) {
-            System.out.println("ERROR...");
-            e.getMessage();
+            e.printStackTrace();
         }
     }
 
-    //method to set up the server socket with the provided port number that the user provided
     private static void init(String serverPort) {
         try {
             //parse from String to Integer
             int port = Integer.parseInt(serverPort);
 
-            //create new server socket object, pass in port number
+            //create new server socket object, pass in port number 8000
             serverSocket = new ServerSocket(port);
 
         } catch (Exception e) {
@@ -47,11 +43,10 @@ public class Server {
 
     private static void run() throws IOException {
         //program is now running
-        isRunning = true;
+        boolean isRunning = true;
 
-        System.out.println("The server is listening on port " + serverSocket.getLocalPort() + "...");
+        System.out.println("The server is listening on PORT " + serverSocket.getLocalPort() + "...");
 
-        //Server is running always. This is done using this while(true)
         while(isRunning){
 
             //new socket creation here
@@ -61,10 +56,10 @@ public class Server {
                 //this socket will communicate with the client socket
                 clientSocket = serverSocket.accept();
 
+                System.out.println("Address for this client: " + clientSocket.getRemoteSocketAddress());
+
                 DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
                 DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
-
-                System.out.println("A new client is connected : " + clientSocket);
 
                 Thread thread = new ClientServiceThread(clientSocket, dis, dos);
 
@@ -73,6 +68,7 @@ public class Server {
                 thread.start();
 
             } catch (Exception e) {
+                assert clientSocket != null;
                 clientSocket.close();
                 e.printStackTrace();
             }

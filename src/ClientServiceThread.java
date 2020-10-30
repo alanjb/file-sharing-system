@@ -3,12 +3,13 @@ import java.net.*;
 import java.nio.channels.FileChannel;
 import java.nio.file.*;
 import java.util.Arrays;
-import java.util.concurrent.locks.Lock;
+import java.util.HashMap;
 
 public class ClientServiceThread extends Thread {
     final DataInputStream dis;
     final DataOutputStream dos;
     final Socket clientSocket;
+    //add const for file storage name here
 
     public ClientServiceThread(Socket clientSocket, DataInputStream inFromClient, DataOutputStream outFromClient) {
         this.dis = inFromClient;
@@ -16,54 +17,69 @@ public class ClientServiceThread extends Thread {
         this.clientSocket = clientSocket;
     }
 
-    //each thread will have its own run()
     @Override
     public void run() {
-        String command;
+        String userCommand;
             try {
-                System.out.println("Starting command selection: ");
+                userCommand = this.dis.readUTF();
 
-                command = this.dis.readUTF();
+                System.out.println("Command Selected: " + userCommand);
 
-                System.out.println("Command Selected: " + command);
+                switch (userCommand) {
+                    case "upload" -> {
+                        String fileName = this.dis.readUTF();
+                        String clientName = this.dis.readUTF();
+                        String serverPath = this.dis.readUTF();
+                        Long fileSize = this.dis.readLong();
+                        String filePath = serverPath + File.separator + fileName;
 
-                //switch statement
-                if(command.equalsIgnoreCase("mkdir")){
-                    System.out.println("CREATING DIRECTORY ON SERVER...");
-                    String filePath = this.dis.readUTF();
-                    System.out.println("FILE PATH SELECTED: " + filePath);
-                    createDirectory(filePath);
-                } else if(command.equalsIgnoreCase("dir")){
-                    System.out.println("RETRIEVING DIRECTORY ON SERVER!");
-                    String existingFilePathOnServer = this.dis.readUTF();
-                    System.out.println("FILE PATH ON SERVER SELECTED: " + existingFilePathOnServer);
-                    listDirectoryItems(existingFilePathOnServer);
-                } else if(command.equalsIgnoreCase("rmdir")){
-                    System.out.println("REMOVING DIRECTORY ON SERVER!");
-                    String existingFilePathOnServer = this.dis.readUTF();
-                    System.out.println("FILE PATH ON SERVER TO DELETE SELECTED: " + existingFilePathOnServer);
-                    removeDirectory(existingFilePathOnServer);
-                } else if(command.equalsIgnoreCase("upload")){
-                    String fileName = this.dis.readUTF();
+                        //create txt file to store hashmap if it doesn't already exist
+                        boolean storageFileExists = checkIfFileStorageExists();
 
-                    String serverPath = this.dis.readUTF();
+                        if(!storageFileExists){
+                            createStorageFile();
+                        }
 
-                    Long fileSize = this.dis.readLong();
+                        boolean fileExistsAndClientIsOwner = searchUnfinishedFilesStorage(fileName);
 
-                    receive(fileName, serverPath, fileSize);
+                        if(!fileExistsAndClientIsOwner){
+                            //add entry into hash map with new client
+                            updateHashMap(filePath, clientName);
+                        }
 
-                } else if(command.equalsIgnoreCase("download")){
-                    String serverPath = this.dis.readUTF();
+                        receive(fileName, serverPath, fileSize, fileExistsAndClientIsOwner);
+                    }
 
-                    //call send method with specified file path on server
-                    send(serverPath);
-                } else if(command.equalsIgnoreCase("rm")){
-                    String serverPath = this.dis.readUTF();
+                    case "download" -> {
+                        String serverPath = this.dis.readUTF();
+                        send(serverPath);
+                    }
 
-                    removeFile(serverPath);
-                } else if(command.equalsIgnoreCase("shutdown")){
-                    shutdown();
+                    case "dir" -> {
+                        String existingFilePathOnServer = this.dis.readUTF();
+                        listDirectoryItems(existingFilePathOnServer);
+                    }
+
+                    case "mkdir" -> {
+                        String filePath = this.dis.readUTF();
+                        createDirectory(filePath);
+                    }
+
+                    case "rmdir" -> {
+                        String existingFilePathOnServer = this.dis.readUTF();
+                        removeDirectory(existingFilePathOnServer);
+                    }
+
+                    case "rm" -> {
+                        String serverPath = this.dis.readUTF();
+                        removeFile(serverPath);
+                    }
+
+                    case "shutdown" -> shutdown();
+
+                    default -> System.out.println("Please enter a valid command");
                 }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -72,8 +88,57 @@ public class ClientServiceThread extends Thread {
             this.dos.close();
             this.dis.close();
         } catch(IOException e) {
-            e.getMessage();
+            e.printStackTrace();
         }
+    }
+
+    private static boolean checkIfFileStorageExists(){
+        String executionPath = System.getProperty("user.dir");
+        File file = new File(executionPath + File.separator + "unfinishedFiles.txt");
+
+        return file.exists();
+    }
+
+    private static void createStorageFile(){
+        try {
+            //how to know which dir?
+            File myObj = new File("unfinishedFiles.txt");
+            if (myObj.createNewFile()) {
+                System.out.println("File created: " + myObj.getName());
+
+                //create hashmap within it
+
+                //create new HashMap
+                HashMap<String, String> unfinishedFilesHashMap = new HashMap<String, String>();
+            } else {
+                System.out.println("File already exists.");
+            }
+        } catch (IOException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
+    }
+
+    private void updateHashMap(String fileName, String clientName) throws IOException {
+        try{
+            FileInputStream fis = new FileInputStream(unfinishedFiles);
+            ObjectInputStream ois = new ObjectInputStream(fis);
+
+            //this should be our stored hash map that we read from the text file
+            HashMap<String, Integer> hashmap = (HashMap<String, Integer>)ois.readObject();
+
+            hashmap.put(fileName, filePosition);
+
+            ois.close();
+            fis.close();
+        } catch(Exception e){
+            e.printStackTrace();
+        }
+
+    }
+
+    private static boolean searchUnfinishedFilesStorage(String fileName){
+        //return true if file exists AND current client is owner
     }
 
     private static void shutdown(){
@@ -129,15 +194,22 @@ public class ClientServiceThread extends Thread {
         }
     }
 
-    private void receive(String fileName, String filePath, Long fileSize) throws IOException {
+    private void receive(String fileName, String filePath, Long fileSize, boolean fileExistsAndClientIsOwner) throws IOException {
         String pathToFile = filePath + File.separator + fileName;
         File file = new File(pathToFile);
         RandomAccessFile raf = new RandomAccessFile(file, "rw");
-        FileChannel channel = raf.getChannel();
         byte[] buffer = new byte[1024];
         int read = 0;
         int filePosition = 0;
         int remaining = Math.toIntExact(fileSize);
+
+        if(fileExistsAndClientIsOwner){
+            long filePos = file.length();
+
+            dos.writeBoolean(true);
+            dos.writeLong(filePos);
+            raf.seek(filePos);
+        }
 
         try {
             while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
@@ -145,25 +217,17 @@ public class ClientServiceThread extends Thread {
                 remaining -= read;
                 System.out.print("\r Downloading file..." + (int)((double)(filePosition)/fileSize * 100) + "%");
                 raf.write(buffer, 0, read);
-
-//                if(filePosition >= 100000){
-//                    System.out.println(" ");
-//                    System.out.println("******");
-//                    System.out.println("*SIMULATING SERVER CRASH* Crashed: " + fileName + " at " + filePosition + " bytes. Please restart server to resume upload.");
-//                    break;
-//                }
             }
 
-
             if(filePosition == fileSize){
-                System.out.println("\n File Downloaded");
+                System.out.println("\n File Download Complete");
             } else {
                 System.out.println("\n There was an interruption when uploading file. Please retry to complete.");
             }
 
         } catch (Exception e) {
             System.out.println("An error occurred attempting to receive file on server.");
-            e.getMessage();
+            e.printStackTrace();
         } finally {
             dos.flush();
             dis.close();
@@ -172,11 +236,8 @@ public class ClientServiceThread extends Thread {
 
     private void removeDirectory(String existingFilePathOnServer) throws IOException {
         try{
-            Path path = Paths.get(existingFilePathOnServer);
-
             File file = new File(existingFilePathOnServer);
 
-            Files.isDirectory(path);
             // check if directory is empty
             if (file.isDirectory()) {
                 String[] list = file.list();
@@ -195,12 +256,7 @@ public class ClientServiceThread extends Thread {
                 this.dos.writeInt(2);
             }
         } catch(Exception e){
-            this.dos.writeBoolean(false);
             e.printStackTrace();
-            e.getMessage();
-
-        } finally {
-            //
         }
     }
 
@@ -257,8 +313,6 @@ public class ClientServiceThread extends Thread {
             e.printStackTrace();
             this.dos.writeBoolean(false);
             //return to client error
-        } finally {
-            //close streams
         }
     }
 } 
