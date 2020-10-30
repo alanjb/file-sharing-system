@@ -37,14 +37,15 @@ public class Client {
         }
     }
 
-    private static String getExecutionPath(){
+    private static String getExecutionPathOfCurrentClient(){
         String executionPath = null;
 
         try {
             executionPath = System.getProperty("user.dir");
             System.out.print("Executing at => " + executionPath.replace("\\", "/"));
+            System.out.print("Executing at as is => " + executionPath);
         } catch(Exception e){
-            System.out.println("Exception caught ="+e.getMessage());
+            e.printStackTrace();
         }
 
         return executionPath;
@@ -153,7 +154,7 @@ public class Client {
                 System.out.println("Sending file name: " + file.getName());
 
                 //send client name to server
-                String clientName = getExecutionPath();
+                String clientName = getExecutionPathOfCurrentClient();
                 outToServer.writeUTF(clientName);
                 System.out.println("Sending client's name to keep track in case of crash" + file.getName());
 

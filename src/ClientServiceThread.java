@@ -40,13 +40,13 @@ public class ClientServiceThread extends Thread {
 
                         if(!storageFileExists){
                             System.out.println("No storage file file...creating...");
-                            createStorageFile();
+                            createStorageFile(clientName);
                         }
 
                         System.out.println("Checking if this file never finished uploading. " +
                                 "If it does then you must be the owner to continue upload...");
 
-                        boolean fileExistsAndClientIsOwner = searchForUnfinishedFileInStorage(filePath);
+                        boolean fileExistsAndClientIsOwner = searchForUnfinishedFileInStorage(filePath, clientName);
 
                         if(!fileExistsAndClientIsOwner){
                             //add entry into hash map with new client
@@ -86,7 +86,7 @@ public class ClientServiceThread extends Thread {
                     default -> System.out.println("There was an error reading the user command...");
                 }
 
-            } catch (IOException e) {
+            } catch (IOException | ClassNotFoundException e) {
                 e.printStackTrace();
             }
 
@@ -105,19 +105,32 @@ public class ClientServiceThread extends Thread {
         return file.exists();
     }
 
-    private void createStorageFile(){
+    private void createStorageFile(String clientName){
         try {
-            //how to know which dir?
-            File myObj = new File("unfinishedFiles.txt");
-            if (myObj.createNewFile()) {
-                System.out.println("File created: " + myObj.getName());
+            File storageFile = new File(clientName + File.separator + "unfinishedFiles.txt");
 
-                //create hashmap within it
+            //lock as well
+            synchronized (storageFile){
+                FileOutputStream fos = new FileOutputStream(storageFile);
+                ObjectOutputStream oos = new ObjectOutputStream(fos);
 
-                //create new HashMap
-                HashMap<String, String> unfinishedFilesHashMap = new HashMap<String, String>();
-            } else {
-                System.out.println("File already exists.");
+                FileLock lock = fos.getChannel().lock();
+
+                if (storageFile.createNewFile()) {
+                    System.out.println("Storage file created: " + storageFile.getName());
+
+                    //create new HashMap
+                    HashMap<String, String> map = new HashMap<>();
+
+                    oos.writeObject(map);
+
+                } else {
+                    System.out.println("File already exists.");
+                }
+
+                lock.release();
+                fos.close();
+                oos.close();
             }
         } catch (IOException e) {
             System.out.println("An error occurred.");
@@ -125,26 +138,55 @@ public class ClientServiceThread extends Thread {
         }
     }
 
-    private void updateHashMap(String fileName, String clientName) throws IOException {
-        try{
-            FileInputStream fis = new FileInputStream(unfinishedFiles);
-            ObjectInputStream ois = new ObjectInputStream(fis);
+    private void updateHashMap(String filePath, String clientName) throws IOException {
+        File storageFile = new File(clientName + File.separator + "unfinishedFiles.txt");
+        FileInputStream fis = new FileInputStream(storageFile);
 
-            //this should be our stored hash map that we read from the text file
-            HashMap<String, Integer> hashmap = (HashMap<String, Integer>)ois.readObject();
+        FileOutputStream fos = new FileOutputStream(storageFile);
 
-            hashmap.put(fileName, filePosition);
+        try (fis; ObjectInputStream ois = new ObjectInputStream(fis); fos; ObjectOutputStream oos = new ObjectOutputStream(fos)) {
 
-            ois.close();
-            fis.close();
-        } catch(Exception e){
+            @SuppressWarnings("unchecked")
+            HashMap<String, String> hashmap = (HashMap<String, String>) ois.readObject();
+
+            hashmap.put(filePath, clientName);
+
+            oos.writeObject(hashmap);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private boolean searchForUnfinishedFileInStorage(String filePath, String clientName) throws IOException, ClassNotFoundException {
+        //return true if file exists AND current client is owner
+        File storageFile = new File(clientName + File.separator + "unfinishedFiles.txt");
+        boolean unfinishedFileExistsForCurrentClient = false;
+
+        FileInputStream fis = new FileInputStream(storageFile);
+
+        try (fis; ObjectInputStream ois = new ObjectInputStream(fis)) {
+            if (storageFile.exists()) {
+
+                //this should be our stored hash map that we read from the text file
+                @SuppressWarnings("unchecked")
+                HashMap<String, String> hashmap = (HashMap<String, String>) ois.readObject();
+
+                if (hashmap.containsKey(filePath)) {
+                    if (String.valueOf(hashmap.get(filePath)).equalsIgnoreCase(clientName)) {
+                        unfinishedFileExistsForCurrentClient = true;
+                    }
+                } else {
+                    System.out.println("FileName does not exist in hashmap");
+                    unfinishedFileExistsForCurrentClient = false;
+                }
+            }
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
-    }
-
-    private boolean searchForUnfinishedFileInStorage(String filePath){
-        //return true if file exists AND current client is owner
+        return unfinishedFileExistsForCurrentClient;
     }
 
     private void removeFromHashMap(){
