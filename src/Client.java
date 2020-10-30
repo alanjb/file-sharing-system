@@ -143,33 +143,34 @@ public class Client {
         long fileSize = file.length();
         String fileName = file.getName();
 
+
         try {
-            try {
-                //send command to server
-                outToServer.writeUTF(command);
-                System.out.println("Sending command type to server: " + command);
+            //send command to server
+            outToServer.writeUTF(command);
+            System.out.println("Sending command type to server: " + command);
 
-                //send file name to server
-                outToServer.writeUTF(fileName);
-                System.out.println("Sending file name: " + file.getName());
+            //send file name to server
+            outToServer.writeUTF(fileName);
+            System.out.println("Sending file name: " + file.getName());
 
-                //send client name to server
-                String clientName = getExecutionPathOfCurrentClient();
-                outToServer.writeUTF(clientName);
-                System.out.println("Sending client's name to keep track in case of crash" + file.getName());
+            //send client name to server
+            String clientName = getExecutionPathOfCurrentClient();
+            outToServer.writeUTF(clientName);
+            System.out.println("Sending client's name to keep track in case of crash" + file.getName());
 
-                //send path on server
-                outToServer.writeUTF(filePathOnServer);
-                System.out.println("Sending file path on server: " + filePathOnServer);
+            //send path on server
+            outToServer.writeUTF(filePathOnServer);
+            System.out.println("Sending file path on server: " + filePathOnServer);
 
-                //send file size to server
-                outToServer.writeLong(fileSize);
-                System.out.println("Sending file size: " + fileSize);
-            } catch(IOException e){
-                System.out.println("There was an issue sending upload data to server");
-                e.printStackTrace();
-            }
+            //send file size to server
+            outToServer.writeLong(fileSize);
+            System.out.println("Sending file size: " + fileSize);
+        } catch(IOException e){
+            System.out.println("There was an issue sending upload data to server");
+            e.printStackTrace();
+        }
 
+        try {
             RandomAccessFile raf = new RandomAccessFile(file, "rw");
 
             if(inFromServer.readBoolean()){
