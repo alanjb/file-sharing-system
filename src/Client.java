@@ -164,7 +164,7 @@ public class Client {
                 //send file size to server
                 outToServer.writeLong(fileSize);
                 System.out.println("Sending file size: " + fileSize);
-            } catch(Exception e){
+            } catch(IOException e){
                 System.out.println("There was an issue sending upload data to server");
                 e.printStackTrace();
             }
