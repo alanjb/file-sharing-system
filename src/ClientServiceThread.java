@@ -32,8 +32,9 @@ public class ClientServiceThread extends Thread {
                         Long fileSize = this.dis.readLong();
 
                         String filePath = serverPath + File.separator + fileName;
+                        System.out.println("FILEPATH ON SERVER: " + filePath);
 
-                        System.out.println("Checking if storage file exists...");
+                        System.out.println("Now checking if storage file exists...");
 
                         //create txt file to store hashmap if it doesn't already exist
                         boolean storageFileExists = checkIfFileStorageExists();
@@ -100,7 +101,12 @@ public class ClientServiceThread extends Thread {
 
     private boolean checkIfFileStorageExists(){
         String executionPath = System.getProperty("user.dir");
+
+        System.out.println("EXECUTION PATH: " + executionPath);
+
         File file = new File(executionPath + File.separator + "unfinishedFiles.txt");
+
+        System.out.println("FILE PATH: " + file.getAbsolutePath());
 
         return file.exists();
     }
