@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.*;
+import java.nio.channels.FileLock;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
 import java.util.*;
@@ -221,33 +222,46 @@ public class ClientServiceThread extends Thread {
             raf.seek(filePos);
         }
 
-        try {
-            byte[] buffer = new byte[1024];
-            int read = 0;
-            int filePosition = 0;
-            int remaining = Math.toIntExact(fileSize);
+        //synchronized and lock file
+        synchronized(raf) {
+            try {
+                byte[] buffer = new byte[1024];
+                int read = 0;
+                int filePosition = 0;
+                int remaining = Math.toIntExact(fileSize);
 
-            while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
-                filePosition += read;
-                remaining -= read;
-                System.out.print("\r Downloading file..." + (int)((double)(filePosition)/fileSize * 100) + "%");
-                raf.write(buffer, 0, read);
+                FileLock lock = raf.getChannel().lock();
+
+                try{
+                    while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
+                        filePosition += read;
+                        remaining -= read;
+                        System.out.print(
+                                "\r Downloading file..." +
+                                (int)((double)(filePosition)/fileSize * 100) +
+                                "%");
+                        raf.write(buffer, 0, read);
+                    }
+
+                    if(filePosition == fileSize){
+                        System.out.println("\n File Download Complete");
+                        //remove from hashmap since the file completed
+                    } else {
+                        System.out.println("\n There was an interruption when uploading file. Please retry to complete.");
+                    }
+                } catch(Exception e){
+                    e.printStackTrace();
+                } finally {
+                    lock.release();
+                    raf.close();
+                }
+            } catch (Exception e) {
+                System.out.println("An error occurred attempting to receive file on server.");
+                e.printStackTrace();
+            } finally {
+                dos.flush();
+                dis.close();
             }
-
-            if(filePosition == fileSize){
-                System.out.println("\n File Download Complete");
-
-                //remove from hashmap since the file completed
-            } else {
-                System.out.println("\n There was an interruption when uploading file. Please retry to complete.");
-            }
-
-        } catch (Exception e) {
-            System.out.println("An error occurred attempting to receive file on server.");
-            e.printStackTrace();
-        } finally {
-            dos.flush();
-            dis.close();
         }
     }
 
