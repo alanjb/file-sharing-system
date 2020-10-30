@@ -246,10 +246,12 @@ public class ClientServiceThread extends Thread {
                     if(filePosition == fileSize){
                         System.out.println("\n File Download Complete");
                         //remove from hashmap since the file completed
+
                     } else {
                         System.out.println("\n There was an interruption when uploading file. Please retry to complete.");
                     }
                 } catch(Exception e){
+                    System.out.println("\n Something went wrong as the client was uploading a file.");
                     e.printStackTrace();
                 } finally {
                     lock.release();

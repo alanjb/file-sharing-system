@@ -61,9 +61,10 @@ public class Client {
         try {
             switch (userCommand) {
                 case "upload" -> {
-                    System.out.println("UPLOAD: Sending file to server...");
+                    System.out.println("UPLOAD SELECTED: Sending file to server...");
                     upload(args[1], args[2]);
                 }
+
                 case "download" -> {
                     System.out.println("DOWNLOAD: Calling server to retrieve file...");
                     receive(args[1], args[2]);
@@ -141,28 +142,33 @@ public class Client {
         long fileSize = file.length();
         String fileName = file.getName();
 
-        //send command to server
-        outToServer.writeUTF(command);
-        System.out.println("Sending command type to server: " + command);
-
-        //send file name to server
-        outToServer.writeUTF(fileName);
-        System.out.println("Sending file name: " + file.getName());
-
-        //send client name to server
-        String clientName = getExecutionPath();
-        outToServer.writeUTF(clientName);
-        System.out.println("Sending client's name to keep track in case of crash" + file.getName());
-
-        //send path on server
-        outToServer.writeUTF(filePathOnServer);
-        System.out.println("Sending file path on server: " + filePathOnServer);
-
-        //send file size to server
-        outToServer.writeLong(fileSize);
-        System.out.println("Sending file size: " + fileSize);
-
         try {
+            try {
+                //send command to server
+                outToServer.writeUTF(command);
+                System.out.println("Sending command type to server: " + command);
+
+                //send file name to server
+                outToServer.writeUTF(fileName);
+                System.out.println("Sending file name: " + file.getName());
+
+                //send client name to server
+                String clientName = getExecutionPath();
+                outToServer.writeUTF(clientName);
+                System.out.println("Sending client's name to keep track in case of crash" + file.getName());
+
+                //send path on server
+                outToServer.writeUTF(filePathOnServer);
+                System.out.println("Sending file path on server: " + filePathOnServer);
+
+                //send file size to server
+                outToServer.writeLong(fileSize);
+                System.out.println("Sending file size: " + fileSize);
+            } catch(Exception e){
+                System.out.println("There was an issue sending upload data to server");
+                e.printStackTrace();
+            }
+
             RandomAccessFile raf = new RandomAccessFile(file, "rw");
 
             if(inFromServer.readBoolean()){
