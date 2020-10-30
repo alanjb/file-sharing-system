@@ -163,6 +163,8 @@ public class ClientServiceThread extends Thread {
 
             oos.writeObject(hashmap);
 
+            System.out.println("Added " + filePath + " | " + clientName + " to storage");
+
         } catch (Exception e) {
             e.printStackTrace();
         }
