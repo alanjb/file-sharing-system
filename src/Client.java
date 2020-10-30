@@ -139,10 +139,11 @@ public class Client {
 
     private static void upload(String filePathOnClient, String filePathOnServer) throws IOException {
         String command = "upload";
-        File file = new File(filePathOnClient);
+        String executionPathOnClient = getExecutionPathOfCurrentClient();
+        File file = new File(executionPathOnClient + File.separator + filePathOnClient);
+        RandomAccessFile raf = new RandomAccessFile(file, "rw");
         long fileSize = file.length();
         String fileName = file.getName();
-
 
         try {
             //send command to server
@@ -165,19 +166,14 @@ public class Client {
             //send file size to server
             outToServer.writeLong(fileSize);
             System.out.println("Sending file size: " + fileSize);
-        } catch(IOException e){
-            System.out.println("There was an issue sending upload data to server");
-            e.printStackTrace();
-        }
 
-        try {
-            RandomAccessFile raf = new RandomAccessFile(file, "rw");
+//            if(inFromServer.readBoolean()){
+//                System.out.println("Resuming upload for file: " + fileName);
+//                long unfinishedFileSizeOnServer = inFromServer.readLong();
+//                raf.seek(unfinishedFileSizeOnServer);
+//            }
 
-            if(inFromServer.readBoolean()){
-                System.out.println("Resuming upload for file: " + fileName);
-                long unfinishedFileSizeOnServer = inFromServer.readLong();
-                raf.seek(unfinishedFileSizeOnServer);
-            }
+
 
             int read = 0;
             int filePosition = 0;

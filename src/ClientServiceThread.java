@@ -41,7 +41,7 @@ public class ClientServiceThread extends Thread {
 
                         if(!storageFileExists){
                             System.out.println("No storage file...creating...");
-                            createStorageFile(clientName);
+                            createStorageFile();
                         }
 
                         System.out.println("STORAGE FILE EXISTS...Now checking if this file never finished uploading. " +
@@ -51,8 +51,7 @@ public class ClientServiceThread extends Thread {
                         boolean fileExistsAndClientIsOwner = searchForUnfinishedFileInStorage(filePath, clientName);
 
                         if(!fileExistsAndClientIsOwner){
-                            System.out.println("You are trying to upload a file to a directory on the server " +
-                                    "that was left unfinished by another client");
+                            System.out.println("Adding new file to hashmap in case of crash");
                             //add entry into hash map with new client
                             updateHashMap(filePath, clientName);
                         }
@@ -107,16 +106,30 @@ public class ClientServiceThread extends Thread {
 
         System.out.println("EXECUTION PATH: " + executionPath);
 
-        File file = new File(executionPath + File.separator + "unfinishedFiles.txt");
+        File file = new File(executionPath + File.separator + "unfinishedFiles.txt" + "\n");
 
-        System.out.println("FILE PATH: " + file.getAbsolutePath());
+        System.out.println("FILE STORAGE PATH: " + file.getAbsolutePath() + "\n");
 
         return file.exists();
     }
 
-    private void createStorageFile(String clientName) {
-        File storageFile = new File(clientName + File.separator + "unfinishedFiles.txt");
+    private void createStorageFile() throws IOException {
+        //get server
+        String serverExecutionPath = null;
+
+        try {
+            serverExecutionPath = System.getProperty("user.dir");
+            System.out.print("Executing at => " + serverExecutionPath.replace("\\", "/"));
+        } catch(Exception e){
+            e.printStackTrace();
+        }
+
+        File storageFile = new File(serverExecutionPath + File.separator + "unfinishedFiles.txt");
         System.out.println("STORAGE FILE ABSOLUTE PATH: " + storageFile.getAbsoluteFile());
+
+        boolean fileCreated = storageFile.createNewFile();
+
+        System.out.println("Storage File Now Created: " + fileCreated);
 
         try {
             //needs to be synchronized because we don't want more than one thread trying to create this file
@@ -126,7 +139,7 @@ public class ClientServiceThread extends Thread {
 
                 FileLock lock = fos.getChannel().lock();
 
-                if (storageFile.createNewFile()) {
+                if (fileCreated) {
                     System.out.println("Storage file created: " + storageFile.getName());
 
                     //create new HashMap and write to text file
@@ -148,22 +161,36 @@ public class ClientServiceThread extends Thread {
         }
     }
 
-    private void updateHashMap(String filePath, String clientName) throws IOException {
-        File storageFile = new File(clientName + File.separator + "unfinishedFiles.txt");
-        FileInputStream fis = new FileInputStream(storageFile);
+    private void updateHashMap(String filePath, String clientName) throws IOException, ClassNotFoundException {
+        String executionPath = System.getProperty("user.dir");
+        File storageFile = new File(executionPath + File.separator + "unfinishedFiles.txt");
 
-        FileOutputStream fos = new FileOutputStream(storageFile);
-
-        try (fis; ObjectInputStream ois = new ObjectInputStream(fis); fos; ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+        try  {
+            FileInputStream fis = new FileInputStream(storageFile);
+            ObjectInputStream ois = new ObjectInputStream(fis);
 
             @SuppressWarnings("unchecked")
-            HashMap<String, String> hashmap = (HashMap<String, String>) ois.readObject();
+            HashMap<String, String> map = (HashMap<String, String>) ois.readObject();
+            map.put(filePath, clientName);
 
-            hashmap.put(filePath, clientName);
+            ois.close();
+            fis.close();
 
-            oos.writeObject(hashmap);
+            System.out.println("Added " + filePath + " | " + clientName + " to storage" + "\n");
 
-            System.out.println("Added " + filePath + " | " + clientName + " to storage");
+            System.out.println("UNFINISHED FILES LIST: " + "\n");
+
+            for(Map.Entry<String,String> m : map.entrySet()){
+                System.out.println(m.getKey()+" : "+m.getValue());
+            }
+
+            FileOutputStream fos = new FileOutputStream(storageFile);
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+
+            oos.writeObject(map);
+
+            fos.close();
+            oos.close();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -172,7 +199,8 @@ public class ClientServiceThread extends Thread {
 
     private boolean searchForUnfinishedFileInStorage(String filePath, String clientName) throws IOException, ClassNotFoundException {
         //return true if file exists AND current client is owner
-        File storageFile = new File(clientName + File.separator + "unfinishedFiles.txt");
+        String executionPath = System.getProperty("user.dir");
+        File storageFile = new File(executionPath + File.separator + "unfinishedFiles.txt");
         boolean unfinishedFileExistsForCurrentClient = false;
 
         FileInputStream fis = new FileInputStream(storageFile);
@@ -195,6 +223,7 @@ public class ClientServiceThread extends Thread {
             }
 
         } catch (Exception e) {
+            System.out.println("There was an error finding the storage file: " +  "\n");
             e.printStackTrace();
         }
 
@@ -277,24 +306,27 @@ public class ClientServiceThread extends Thread {
         }
     }
 
-    private void receive(String fileName, String clientName, String filePath, Long fileSize, boolean fileExistsAndClientIsOwner) throws IOException {
-        String pathToFile = filePath + File.separator + fileName;
+    private void receive(String fileName, String clientName, String serverPath, Long fileSize, boolean fileExistsAndClientIsOwner) throws IOException {
+        String pathToFile = serverPath + File.separator + fileName;
 
         File file = new File(pathToFile);
 
+        System.out.println(file.getAbsoluteFile());
+        System.out.println(file.getName());
+
         RandomAccessFile raf = new RandomAccessFile(file, "rw");
 
-        if(fileExistsAndClientIsOwner){
-            System.out.println("You are owner of unfinished file. Sending file position back to client to resume upload...");
-            long filePos = file.length();
-
-            //send back offset position to restart upload from where it left off
-            dos.writeBoolean(true);
-            dos.writeLong(filePos);
-
-            //not sure if this is needed here
-            raf.seek(filePos);
-        }
+//        if(fileExistsAndClientIsOwner){
+//            System.out.println("***You are owner of unfinished file. Sending file position back to client to resume upload***");
+//            long filePos = file.length();
+//
+//            //send back offset position to restart upload from where it left off
+//            dos.writeBoolean(true);
+//            dos.writeLong(filePos);
+//
+//            //not sure if this is needed here
+//            raf.seek(filePos);
+//        }
 
         //synchronized and lock file
         synchronized(raf) {
