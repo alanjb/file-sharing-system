@@ -40,16 +40,19 @@ public class ClientServiceThread extends Thread {
                         boolean storageFileExists = checkIfFileStorageExists();
 
                         if(!storageFileExists){
-                            System.out.println("No storage file file...creating...");
+                            System.out.println("No storage file...creating...");
                             createStorageFile(clientName);
                         }
 
-                        System.out.println("Checking if this file never finished uploading. " +
-                                "If it does then you must be the owner to continue upload...");
+                        System.out.println("STORAGE FILE EXISTS...Now checking if this file never finished uploading. " +
+                                "If it does then you must be the owner to be able to continue upload. If you are not " +
+                                "the owner then you will replace it.");
 
                         boolean fileExistsAndClientIsOwner = searchForUnfinishedFileInStorage(filePath, clientName);
 
                         if(!fileExistsAndClientIsOwner){
+                            System.out.println("You are trying to upload a file to a directory on the server " +
+                                    "that was left unfinished by another client");
                             //add entry into hash map with new client
                             updateHashMap(filePath, clientName);
                         }
@@ -111,11 +114,12 @@ public class ClientServiceThread extends Thread {
         return file.exists();
     }
 
-    private void createStorageFile(String clientName){
-        try {
-            File storageFile = new File(clientName + File.separator + "unfinishedFiles.txt");
+    private void createStorageFile(String clientName) {
+        File storageFile = new File(clientName + File.separator + "unfinishedFiles.txt");
+        System.out.println("STORAGE FILE ABSOLUTE PATH: " + storageFile.getAbsoluteFile());
 
-            //lock as well
+        try {
+            //needs to be synchronized because we don't want more than one thread trying to create this file
             synchronized (storageFile){
                 FileOutputStream fos = new FileOutputStream(storageFile);
                 ObjectOutputStream oos = new ObjectOutputStream(fos);
@@ -125,13 +129,13 @@ public class ClientServiceThread extends Thread {
                 if (storageFile.createNewFile()) {
                     System.out.println("Storage file created: " + storageFile.getName());
 
-                    //create new HashMap
+                    //create new HashMap and write to text file
                     HashMap<String, String> map = new HashMap<>();
 
                     oos.writeObject(map);
 
                 } else {
-                    System.out.println("File already exists.");
+                    System.out.println("Storage file already exists...This should never be called...");
                 }
 
                 lock.release();
@@ -139,7 +143,7 @@ public class ClientServiceThread extends Thread {
                 oos.close();
             }
         } catch (IOException e) {
-            System.out.println("An error occurred.");
+            System.out.println("An error occurred trying to create storage file.");
             e.printStackTrace();
         }
     }
@@ -260,6 +264,7 @@ public class ClientServiceThread extends Thread {
         RandomAccessFile raf = new RandomAccessFile(file, "rw");
 
         if(fileExistsAndClientIsOwner){
+            System.out.println("You are owner of unfinished file. Sending file position back to client to resume upload...");
             long filePos = file.length();
 
             //send back offset position to restart upload from where it left off
