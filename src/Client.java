@@ -182,8 +182,7 @@ public class Client {
                 System.out.print(
                         "\r Uploading file..."
                         + (int)((double)(filePosition)/fileSize * 100)
-                        + "%"
-                );
+                        + "%");
                 outToServer.write(buffer);
             }
 
@@ -197,6 +196,9 @@ public class Client {
 
         } catch(Exception e){
             e.printStackTrace();
+        } finally {
+            outToServer.close();
+            inFromServer.close();
         }
     }
 
