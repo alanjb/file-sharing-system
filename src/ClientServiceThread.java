@@ -57,7 +57,7 @@ public class ClientServiceThread extends Thread {
                             updateHashMap(filePath, clientName);
                         }
 
-                        receive(fileName, serverPath, fileSize, fileExistsAndClientIsOwner);
+                        receive(fileName, clientName, serverPath, fileSize, fileExistsAndClientIsOwner);
                     }
 
                     case "download" -> {
@@ -199,8 +199,25 @@ public class ClientServiceThread extends Thread {
         return unfinishedFileExistsForCurrentClient;
     }
 
-    private void removeFromHashMap(){
+    private void removeFromHashMap(String filePath, String clientName) throws FileNotFoundException {
+        File storageFile = new File(clientName + File.separator + "unfinishedFiles.txt");
 
+        FileInputStream fis = new FileInputStream(storageFile);
+
+        FileOutputStream fos = new FileOutputStream(storageFile);
+
+        try (fis; ObjectInputStream ois = new ObjectInputStream(fis); fos; ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+
+            @SuppressWarnings("unchecked")
+            HashMap<String, String> hashmap = (HashMap<String, String>) ois.readObject();
+
+            hashmap.remove(filePath, clientName);
+
+            oos.writeObject(hashmap);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void shutdown(){
@@ -256,7 +273,7 @@ public class ClientServiceThread extends Thread {
         }
     }
 
-    private void receive(String fileName, String filePath, Long fileSize, boolean fileExistsAndClientIsOwner) throws IOException {
+    private void receive(String fileName, String clientName, String filePath, Long fileSize, boolean fileExistsAndClientIsOwner) throws IOException {
         String pathToFile = filePath + File.separator + fileName;
 
         File file = new File(pathToFile);
@@ -299,6 +316,7 @@ public class ClientServiceThread extends Thread {
                     if(filePosition == fileSize){
                         System.out.println("\n File Download Complete");
                         //remove from hashmap since the file completed
+                        removeFromHashMap(filePath, clientName);
 
                     } else {
                         System.out.println("\n There was an interruption when uploading file. Please retry to complete.");
