@@ -215,6 +215,8 @@ public class ClientServiceThread extends Thread {
 
             oos.writeObject(hashmap);
 
+            System.out.println("Removed " + filePath + " | " + clientName + " from storage");
+
         } catch (Exception e) {
             e.printStackTrace();
         }
