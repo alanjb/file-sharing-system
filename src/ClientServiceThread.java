@@ -1,6 +1,5 @@
 import java.io.*;
 import java.net.*;
-import java.nio.*;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
 import java.util.*;
@@ -22,7 +21,7 @@ public class ClientServiceThread extends Thread {
             try {
                 userCommand = this.dis.readUTF();
 
-                System.out.println("Command Selected: " + userCommand);
+                System.out.println("Client Command Selected: " + userCommand);
 
                 switch (userCommand) {
                     case "upload" -> {
@@ -44,9 +43,9 @@ public class ClientServiceThread extends Thread {
                         }
 
                         System.out.println("Checking if this file never finished uploading. " +
-                                "If it does then you must be the owner to continue upload.");
+                                "If it does then you must be the owner to continue upload...");
 
-                        boolean fileExistsAndClientIsOwner = searchUnfinishedFilesStorage(filePath);
+                        boolean fileExistsAndClientIsOwner = searchForUnfinishedFileInStorage(filePath);
 
                         if(!fileExistsAndClientIsOwner){
                             //add entry into hash map with new client
@@ -83,7 +82,7 @@ public class ClientServiceThread extends Thread {
 
                     case "shutdown" -> shutdown();
 
-                    default -> System.out.println("Please enter a valid command");
+                    default -> System.out.println("There was an error reading the user command...");
                 }
 
             } catch (IOException e) {
@@ -98,14 +97,14 @@ public class ClientServiceThread extends Thread {
         }
     }
 
-    private static boolean checkIfFileStorageExists(){
+    private boolean checkIfFileStorageExists(){
         String executionPath = System.getProperty("user.dir");
         File file = new File(executionPath + File.separator + "unfinishedFiles.txt");
 
         return file.exists();
     }
 
-    private static void createStorageFile(){
+    private void createStorageFile(){
         try {
             //how to know which dir?
             File myObj = new File("unfinishedFiles.txt");
@@ -143,11 +142,15 @@ public class ClientServiceThread extends Thread {
 
     }
 
-    private static boolean searchUnfinishedFilesStorage(String fileName){
+    private boolean searchForUnfinishedFileInStorage(String filePath){
         //return true if file exists AND current client is owner
     }
 
-    private static void shutdown(){
+    private void removeFromHashMap(){
+
+    }
+
+    private void shutdown(){
         System.out.println("Terminating program...goodbye.");
         System.exit(0);
     }
@@ -202,22 +205,28 @@ public class ClientServiceThread extends Thread {
 
     private void receive(String fileName, String filePath, Long fileSize, boolean fileExistsAndClientIsOwner) throws IOException {
         String pathToFile = filePath + File.separator + fileName;
+
         File file = new File(pathToFile);
+
         RandomAccessFile raf = new RandomAccessFile(file, "rw");
-        byte[] buffer = new byte[1024];
-        int read = 0;
-        int filePosition = 0;
-        int remaining = Math.toIntExact(fileSize);
 
         if(fileExistsAndClientIsOwner){
             long filePos = file.length();
 
+            //send back offset position to restart upload from where it left off
             dos.writeBoolean(true);
             dos.writeLong(filePos);
+
+            //not sure if this is needed here
             raf.seek(filePos);
         }
 
         try {
+            byte[] buffer = new byte[1024];
+            int read = 0;
+            int filePosition = 0;
+            int remaining = Math.toIntExact(fileSize);
+
             while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
                 filePosition += read;
                 remaining -= read;
