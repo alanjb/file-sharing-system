@@ -1,9 +1,8 @@
 import java.io.*;
 import java.net.*;
-import java.nio.channels.FileChannel;
-import java.nio.file.*;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.nio.*;
+import java.nio.file.FileAlreadyExistsException;
+import java.util.*;
 
 public class ClientServiceThread extends Thread {
     final DataInputStream dis;
@@ -31,16 +30,22 @@ public class ClientServiceThread extends Thread {
                         String clientName = this.dis.readUTF();
                         String serverPath = this.dis.readUTF();
                         Long fileSize = this.dis.readLong();
+
                         String filePath = serverPath + File.separator + fileName;
+
+                        System.out.println("Checking if tracker file exists...");
 
                         //create txt file to store hashmap if it doesn't already exist
                         boolean storageFileExists = checkIfFileStorageExists();
 
                         if(!storageFileExists){
+                            System.out.println("No tracker file file...creating...");
                             createStorageFile();
                         }
 
-                        boolean fileExistsAndClientIsOwner = searchUnfinishedFilesStorage(fileName);
+                        System.out.println("Checking if this file never finished uploading and if you are the owner...");
+
+                        boolean fileExistsAndClientIsOwner = searchUnfinishedFilesStorage(filePath);
 
                         if(!fileExistsAndClientIsOwner){
                             //add entry into hash map with new client
