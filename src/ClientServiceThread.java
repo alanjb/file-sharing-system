@@ -2,13 +2,13 @@ import java.io.*;
 import java.net.*;
 import java.nio.*;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.NoSuchFileException;
 import java.util.*;
 
 public class ClientServiceThread extends Thread {
     final DataInputStream dis;
     final DataOutputStream dos;
     final Socket clientSocket;
-    //add const for file storage name here
 
     public ClientServiceThread(Socket clientSocket, DataInputStream inFromClient, DataOutputStream outFromClient) {
         this.dis = inFromClient;
@@ -33,17 +33,18 @@ public class ClientServiceThread extends Thread {
 
                         String filePath = serverPath + File.separator + fileName;
 
-                        System.out.println("Checking if tracker file exists...");
+                        System.out.println("Checking if storage file exists...");
 
                         //create txt file to store hashmap if it doesn't already exist
                         boolean storageFileExists = checkIfFileStorageExists();
 
                         if(!storageFileExists){
-                            System.out.println("No tracker file file...creating...");
+                            System.out.println("No storage file file...creating...");
                             createStorageFile();
                         }
 
-                        System.out.println("Checking if this file never finished uploading and if you are the owner...");
+                        System.out.println("Checking if this file never finished uploading. " +
+                                "If it does then you must be the owner to continue upload.");
 
                         boolean fileExistsAndClientIsOwner = searchUnfinishedFilesStorage(filePath);
 
@@ -226,6 +227,8 @@ public class ClientServiceThread extends Thread {
 
             if(filePosition == fileSize){
                 System.out.println("\n File Download Complete");
+
+                //remove from hashmap since the file completed
             } else {
                 System.out.println("\n There was an interruption when uploading file. Please retry to complete.");
             }

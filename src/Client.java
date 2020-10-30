@@ -138,9 +138,7 @@ public class Client {
     private static void upload(String filePathOnClient, String filePathOnServer) throws IOException {
         String command = "upload";
         File file = new File(filePathOnClient);
-        RandomAccessFile raf = new RandomAccessFile(file, "rw");
         long fileSize = file.length();
-        byte[] buffer = new byte[1024];
         String fileName = file.getName();
 
         //send command to server
@@ -165,6 +163,8 @@ public class Client {
         System.out.println("Sending file size: " + fileSize);
 
         try {
+            RandomAccessFile raf = new RandomAccessFile(file, "rw");
+
             if(inFromServer.readBoolean()){
                 System.out.println("Resuming upload for file: " + fileName);
                 long unfinishedFileSizeOnServer = inFromServer.readLong();
@@ -174,6 +174,7 @@ public class Client {
             int read = 0;
             int filePosition = 0;
             int remaining = Math.toIntExact(fileSize);
+            byte[] buffer = new byte[1024];
 
             while((read = raf.read(buffer, 0, Math.min(buffer.length, remaining))) > 0){
                 filePosition += read;
