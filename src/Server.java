@@ -56,14 +56,14 @@ public class Server {
                 //this socket will communicate with the client socket
                 clientSocket = serverSocket.accept();
 
-                System.out.println("Address for this client: " + clientSocket.getRemoteSocketAddress());
+//                System.out.println("Address for this client: " + clientSocket.getRemoteSocketAddress());
 
                 DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
                 DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
 
                 Thread thread = new ClientServiceThread(clientSocket, dis, dos);
 
-                System.out.println("Assigned new thread for this client. Starting thread...");
+//                System.out.println("Assigned new thread for this client. Starting thread...");
 
                 thread.start();
 

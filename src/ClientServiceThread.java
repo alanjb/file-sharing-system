@@ -112,17 +112,14 @@ public class ClientServiceThread extends Thread {
 
     private boolean checkIfFileStorageExists(){
         String executionPath = System.getProperty("user.dir");
+
         boolean exists;
 
-        System.out.println("EXECUTION PATH: " + executionPath);
-
-        File file = new File(executionPath + File.separator + "unfinishedFiles.txt" + "\n");
-
-        System.out.println("FILE STORAGE PATH: " + file.getAbsolutePath() + "\n");
+        File file = new File(executionPath + File.separator + "unfinishedFiles.txt");
 
         exists = file.exists();
 
-        System.out.println("EXISTS? ::  " + exists + "\n");
+        System.out.println("EXISTS ====>  " + exists);
 
         return exists;
     }
@@ -139,7 +136,6 @@ public class ClientServiceThread extends Thread {
         }
 
         File storageFile = new File(serverExecutionPath + File.separator + "unfinishedFiles.txt");
-        System.out.println("STORAGE FILE ABSOLUTE PATH: " + storageFile.getAbsoluteFile());
 
         boolean fileCreated = storageFile.createNewFile();
 
@@ -160,9 +156,6 @@ public class ClientServiceThread extends Thread {
                     HashMap<String, String> map = new HashMap<>();
 
                     oos.writeObject(map);
-
-                } else {
-                    System.out.println("Storage file already exists...This should never be called...");
                 }
 
                 lock.release();
@@ -193,13 +186,15 @@ public class ClientServiceThread extends Thread {
             ois.close();
             fis.close();
 
-            System.out.println("Added " + fullPath + " | " + clientName + " to storage" + "\n");
+            System.out.println("Added " + fullPath + " | " + clientName + " to storage");
 
             System.out.println("UNFINISHED FILES LIST: " + "\n");
 
             for(Map.Entry<String,String> m : map.entrySet()){
                 System.out.println(m.getKey()+" : "+m.getValue());
             }
+
+            System.out.println("\n");
 
             FileOutputStream fos = new FileOutputStream(storageFile);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
@@ -217,20 +212,27 @@ public class ClientServiceThread extends Thread {
     private boolean searchForUnfinishedFileInStorage(String filePath, String clientName) throws IOException, ClassNotFoundException {
         String executionPath = System.getProperty("user.dir");
         File storageFile = new File(executionPath + File.separator + "unfinishedFiles.txt");
+
         boolean unfinishedFileExistsForCurrentClient = false;
         String fullPath = executionPath + File.separator + filePath;
 
         FileInputStream fis = new FileInputStream(storageFile);
+        ObjectInputStream ois = new ObjectInputStream(fis);
 
-        try (fis; ObjectInputStream ois = new ObjectInputStream(fis)) {
+        try {
             if (storageFile.exists()) {
+                System.out.println("Storage file exists...CHECK IF FILE EXISTS");
 
-                //this should be our stored hash map that we read from the text file
                 @SuppressWarnings("unchecked")
                 HashMap<String, String> hashmap = (HashMap<String, String>) ois.readObject();
 
                 if (hashmap.containsKey(fullPath)) {
-                    if (String.valueOf(hashmap.get(fullPath)).equalsIgnoreCase(clientName)) {
+                    String client = hashmap.get(fullPath);
+
+                    System.out.println("Client value: " + client);
+
+                    if(client.equalsIgnoreCase(clientName)){
+                        System.out.println("FileName does exist in hashmap and client matches...");
                         unfinishedFileExistsForCurrentClient = true;
                     }
                 } else {
@@ -243,6 +245,8 @@ public class ClientServiceThread extends Thread {
             System.out.println("There was an error finding the storage file: " +  "\n");
             e.printStackTrace();
         }
+
+        System.out.println("DOES THE FILE EXIST IN THE HASHMAP: " + unfinishedFileExistsForCurrentClient);
 
         return unfinishedFileExistsForCurrentClient;
     }
@@ -366,7 +370,7 @@ public class ClientServiceThread extends Thread {
                                             "%");
                             raf.write(buffer, 0, read);
 
-//                            if(filePosition >= 100000){
+//                            if(filePosition >= 500000){
 //                                System.out.println(" ");
 //                                System.out.println("******");
 //                                System.out.println("*SIMULATING SERVER CRASH* Crashed: " + fileName + " at " + filePosition + " bytes. Please restart server to resume upload.");

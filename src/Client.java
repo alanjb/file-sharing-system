@@ -173,7 +173,7 @@ public class Client {
                 long unfinishedFileSizeOnServer = inFromServer.readLong();
                 raf.seek(unfinishedFileSizeOnServer);
             } else {
-                System.out.println("Starting a new upload for: " + fileName);
+                System.out.println("Starting a new upload for file: " + fileName);
             }
 
             int read = 0;
@@ -193,8 +193,6 @@ public class Client {
 
             if(filePosition == fileSize){
                 System.out.println("\n File Upload Complete");
-            } else {
-                System.out.println("There was an interruption when uploading file. Please retry to complete.");
             }
 
             raf.close();
