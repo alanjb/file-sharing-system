@@ -31,8 +31,7 @@ public class ClientServiceThread extends Thread {
                         String serverPath = this.dis.readUTF();
                         Long fileSize = this.dis.readLong();
 
-                        String filePath = serverPath + File.separator + fileName;
-                        System.out.println("FILEPATH ON SERVER: " + filePath);
+                        System.out.println("FILEPATH ON SERVER: " + serverPath);
 
                         System.out.println("Now checking if storage file exists...");
 
@@ -48,12 +47,12 @@ public class ClientServiceThread extends Thread {
                                 "If it does then you must be the owner to be able to continue upload. If you are not " +
                                 "the owner then you will replace it.");
 
-                        boolean fileExistsAndClientIsOwner = searchForUnfinishedFileInStorage(filePath, clientName);
+                        boolean fileExistsAndClientIsOwner = searchForUnfinishedFileInStorage(serverPath, clientName);
 
                         if(!fileExistsAndClientIsOwner){
                             System.out.println("Adding new file to hashmap in case of crash");
                             //add entry into hash map with new client
-                            updateHashMap(filePath, clientName);
+                            updateHashMap(serverPath, clientName);
                         }
 
                         receive(fileName, clientName, serverPath, fileSize, fileExistsAndClientIsOwner);
@@ -161,7 +160,7 @@ public class ClientServiceThread extends Thread {
         }
     }
 
-    private void updateHashMap(String filePath, String clientName) throws IOException, ClassNotFoundException {
+    private void updateHashMap(String filePath, String clientName) throws IOException, ClassNotFoundException  {
         String executionPath = System.getProperty("user.dir");
         File storageFile = new File(executionPath + File.separator + "unfinishedFiles.txt");
 
@@ -231,22 +230,35 @@ public class ClientServiceThread extends Thread {
     }
 
     private void removeFromHashMap(String filePath, String clientName) throws FileNotFoundException {
-        File storageFile = new File(clientName + File.separator + "unfinishedFiles.txt");
+        String executionPath = System.getProperty("user.dir");
+        File storageFile = new File(executionPath + File.separator + "unfinishedFiles.txt");
 
-        FileInputStream fis = new FileInputStream(storageFile);
-
-        FileOutputStream fos = new FileOutputStream(storageFile);
-
-        try (fis; ObjectInputStream ois = new ObjectInputStream(fis); fos; ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+        try  {
+            FileInputStream fis = new FileInputStream(storageFile);
+            ObjectInputStream ois = new ObjectInputStream(fis);
 
             @SuppressWarnings("unchecked")
-            HashMap<String, String> hashmap = (HashMap<String, String>) ois.readObject();
+            HashMap<String, String> map = (HashMap<String, String>) ois.readObject();
+            map.remove(filePath, clientName);
 
-            hashmap.remove(filePath, clientName);
+            ois.close();
+            fis.close();
 
-            oos.writeObject(hashmap);
+            System.out.println("Deleted " + filePath + " | " + clientName + " from storage" + "\n");
 
-            System.out.println("Removed " + filePath + " | " + clientName + " from storage");
+            System.out.println("UNFINISHED FILES LIST AFTER DELETE: " + "\n");
+
+            for(Map.Entry<String,String> m : map.entrySet()){
+                System.out.println(m.getKey()+" : "+m.getValue());
+            }
+
+            FileOutputStream fos = new FileOutputStream(storageFile);
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+
+            oos.writeObject(map);
+
+            fos.close();
+            oos.close();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -307,70 +319,75 @@ public class ClientServiceThread extends Thread {
     }
 
     private void receive(String fileName, String clientName, String serverPath, Long fileSize, boolean fileExistsAndClientIsOwner) throws IOException {
-        String pathToFile = serverPath + File.separator + fileName;
+        try {
+            String executionPath = System.getProperty("user.dir");
 
-        File file = new File(pathToFile);
+            File file = new File(executionPath + File.separator + serverPath);
 
-        System.out.println(file.getAbsoluteFile());
-        System.out.println(file.getName());
+            System.out.println("FILE PATH " + file.getAbsolutePath());
 
-        RandomAccessFile raf = new RandomAccessFile(file, "rw");
+            System.out.println("Creating Random access file...");
 
-//        if(fileExistsAndClientIsOwner){
-//            System.out.println("***You are owner of unfinished file. Sending file position back to client to resume upload***");
-//            long filePos = file.length();
-//
-//            //send back offset position to restart upload from where it left off
-//            dos.writeBoolean(true);
-//            dos.writeLong(filePos);
-//
-//            //not sure if this is needed here
-//            raf.seek(filePos);
-//        }
+            RandomAccessFile raf = new RandomAccessFile(file, "rw");
 
-        //synchronized and lock file
-        synchronized(raf) {
-            try {
-                byte[] buffer = new byte[1024];
-                int read = 0;
-                int filePosition = 0;
-                int remaining = Math.toIntExact(fileSize);
+            System.out.println("Random access file created");
 
-                FileLock lock = raf.getChannel().lock();
+            if(fileExistsAndClientIsOwner){
+                System.out.println("***You are owner of unfinished file. Sending file position back to client to resume upload***");
+                long filePos = file.length();
 
-                try{
-                    while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
-                        filePosition += read;
-                        remaining -= read;
-                        System.out.print(
-                                "\r Downloading file..." +
-                                (int)((double)(filePosition)/fileSize * 100) +
-                                "%");
-                        raf.write(buffer, 0, read);
+                //send back offset position to restart upload from where it left off
+                dos.writeBoolean(true);
+                dos.writeLong(filePos);
+
+                //not sure if this is needed here
+                raf.seek(filePos);
+            }
+
+            synchronized(raf) {
+                try {
+                    byte[] buffer = new byte[1024];
+                    int read = 0;
+                    int filePosition = 0;
+                    int remaining = Math.toIntExact(fileSize);
+
+                    FileLock lock = raf.getChannel().lock();
+
+                    try{
+                        while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
+                            filePosition += read;
+                            remaining -= read;
+                            System.out.print(
+                                    "\r Downloading file..." +
+                                            (int)((double)(filePosition)/fileSize * 100) +
+                                            "%");
+                            raf.write(buffer, 0, read);
+                        }
+
+                        if(filePosition == fileSize){
+                            System.out.println("\n File Download Complete");
+                            //remove from hashmap since the file completed
+                            removeFromHashMap(serverPath, clientName);
+                        } else {
+                            System.out.println("\n There was an interruption when uploading file. Please retry to complete.");
+                        }
+                    } catch(Exception e){
+                        System.out.println("\n Something went wrong as the client was uploading a file.");
+                        e.printStackTrace();
+                    } finally {
+                        lock.release();
+                        raf.close();
                     }
-
-                    if(filePosition == fileSize){
-                        System.out.println("\n File Download Complete");
-                        //remove from hashmap since the file completed
-                        removeFromHashMap(filePath, clientName);
-
-                    } else {
-                        System.out.println("\n There was an interruption when uploading file. Please retry to complete.");
-                    }
-                } catch(Exception e){
-                    System.out.println("\n Something went wrong as the client was uploading a file.");
+                } catch (Exception e) {
+                    System.out.println("An error occurred attempting to receive file on server.");
                     e.printStackTrace();
                 } finally {
-                    lock.release();
-                    raf.close();
+                    dos.flush();
+                    dis.close();
                 }
-            } catch (Exception e) {
-                System.out.println("An error occurred attempting to receive file on server.");
-                e.printStackTrace();
-            } finally {
-                dos.flush();
-                dis.close();
             }
+        } catch(Exception e){
+            e.printStackTrace();
         }
     }
 
