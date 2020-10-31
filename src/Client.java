@@ -142,6 +142,7 @@ public class Client {
         String executionPathOnClient = getExecutionPathOfCurrentClient();
         File file = new File(executionPathOnClient + File.separator + filePathOnClient);
         RandomAccessFile raf = new RandomAccessFile(file, "rw");
+
         long fileSize = file.length();
         String fileName = file.getName();
 
@@ -171,6 +172,8 @@ public class Client {
                 System.out.println("Resuming upload for file: " + fileName);
                 long unfinishedFileSizeOnServer = inFromServer.readLong();
                 raf.seek(unfinishedFileSizeOnServer);
+            } else {
+                System.out.println("Starting a new upload for: " + fileName);
             }
 
             int read = 0;
@@ -197,6 +200,7 @@ public class Client {
             raf.close();
 
         } catch(Exception e){
+            System.out.println("There was an interruption when uploading file. Please retry to complete \n.");
             e.printStackTrace();
         } finally {
             outToServer.close();

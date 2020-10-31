@@ -31,6 +31,9 @@ public class ClientServiceThread extends Thread {
                         String serverPath = this.dis.readUTF();
                         Long fileSize = this.dis.readLong();
 
+                        String executionPath = System.getProperty("user.dir");
+                        File file = new File(executionPath + File.separator + serverPath);
+
                         System.out.println("FILEPATH ON SERVER: " + serverPath);
 
                         System.out.println("Now checking if storage file exists...");
@@ -39,23 +42,30 @@ public class ClientServiceThread extends Thread {
                         boolean storageFileExists = checkIfFileStorageExists();
 
                         if(!storageFileExists){
+
                             System.out.println("No storage file...creating...");
                             createStorageFile();
                         }
-
-                        System.out.println("STORAGE FILE EXISTS...Now checking if this file never finished uploading. " +
-                                "If it does then you must be the owner to be able to continue upload. If you are not " +
-                                "the owner then you will replace it.");
 
                         boolean fileExistsAndClientIsOwner = searchForUnfinishedFileInStorage(serverPath, clientName);
 
                         if(!fileExistsAndClientIsOwner){
                             System.out.println("Adding new file to hashmap in case of crash");
-                            //add entry into hash map with new client
+
+                            //add entry into hash map with new client to upload new file or replace file
                             updateHashMap(serverPath, clientName);
+                            dos.writeBoolean(false);
+                        } else {
+                            System.out.println("***You are owner of unfinished file. Sending file position back to client to resume upload***");
+
+                            long filePos = file.length();
+
+                            //send back offset position to restart upload from where it left off
+                            dos.writeBoolean(true);
+                            dos.writeLong(filePos);
                         }
 
-                        receive(fileName, clientName, serverPath, fileSize, fileExistsAndClientIsOwner);
+                        receive(fileName, clientName, serverPath, fileSize, file);
                     }
 
                     case "download" -> {
@@ -102,6 +112,7 @@ public class ClientServiceThread extends Thread {
 
     private boolean checkIfFileStorageExists(){
         String executionPath = System.getProperty("user.dir");
+        boolean exists;
 
         System.out.println("EXECUTION PATH: " + executionPath);
 
@@ -109,7 +120,11 @@ public class ClientServiceThread extends Thread {
 
         System.out.println("FILE STORAGE PATH: " + file.getAbsolutePath() + "\n");
 
-        return file.exists();
+        exists = file.exists();
+
+        System.out.println("EXISTS? ::  " + exists + "\n");
+
+        return exists;
     }
 
     private void createStorageFile() throws IOException {
@@ -170,12 +185,15 @@ public class ClientServiceThread extends Thread {
 
             @SuppressWarnings("unchecked")
             HashMap<String, String> map = (HashMap<String, String>) ois.readObject();
-            map.put(filePath, clientName);
+
+            String fullPath = executionPath + filePath;
+
+            map.put(fullPath, clientName);
 
             ois.close();
             fis.close();
 
-            System.out.println("Added " + filePath + " | " + clientName + " to storage" + "\n");
+            System.out.println("Added " + fullPath + " | " + clientName + " to storage" + "\n");
 
             System.out.println("UNFINISHED FILES LIST: " + "\n");
 
@@ -197,7 +215,6 @@ public class ClientServiceThread extends Thread {
     }
 
     private boolean searchForUnfinishedFileInStorage(String filePath, String clientName) throws IOException, ClassNotFoundException {
-        //return true if file exists AND current client is owner
         String executionPath = System.getProperty("user.dir");
         File storageFile = new File(executionPath + File.separator + "unfinishedFiles.txt");
         boolean unfinishedFileExistsForCurrentClient = false;
@@ -239,12 +256,15 @@ public class ClientServiceThread extends Thread {
 
             @SuppressWarnings("unchecked")
             HashMap<String, String> map = (HashMap<String, String>) ois.readObject();
-            map.remove(filePath, clientName);
+
+            String fullPath = executionPath + filePath;
+
+            map.remove(fullPath, clientName);
 
             ois.close();
             fis.close();
 
-            System.out.println("Deleted " + filePath + " | " + clientName + " from storage" + "\n");
+            System.out.println("Deleted " + fullPath + " | " + clientName + " from storage" + "\n");
 
             System.out.println("UNFINISHED FILES LIST AFTER DELETE: " + "\n");
 
@@ -318,33 +338,15 @@ public class ClientServiceThread extends Thread {
         }
     }
 
-    private void receive(String fileName, String clientName, String serverPath, Long fileSize, boolean fileExistsAndClientIsOwner) throws IOException {
+    private void receive(String fileName, String clientName, String serverPath, Long fileSize, File file) throws IOException {
         try {
-            String executionPath = System.getProperty("user.dir");
-
-            File file = new File(executionPath + File.separator + serverPath);
-
-            System.out.println("FILE PATH " + file.getAbsolutePath());
-
-            System.out.println("Creating Random access file...");
 
             RandomAccessFile raf = new RandomAccessFile(file, "rw");
 
             System.out.println("Random access file created");
 
-            if(fileExistsAndClientIsOwner){
-                System.out.println("***You are owner of unfinished file. Sending file position back to client to resume upload***");
-                long filePos = file.length();
-
-                //send back offset position to restart upload from where it left off
-                dos.writeBoolean(true);
-                dos.writeLong(filePos);
-
-                //not sure if this is needed here
-                raf.seek(filePos);
-            }
-
             synchronized(raf) {
+                System.out.println("test");
                 try {
                     byte[] buffer = new byte[1024];
                     int read = 0;
@@ -362,6 +364,13 @@ public class ClientServiceThread extends Thread {
                                             (int)((double)(filePosition)/fileSize * 100) +
                                             "%");
                             raf.write(buffer, 0, read);
+
+//                            if(filePosition >= 100000){
+//                                System.out.println(" ");
+//                                System.out.println("******");
+//                                System.out.println("*SIMULATING SERVER CRASH* Crashed: " + fileName + " at " + filePosition + " bytes. Please restart server to resume upload.");
+//                                break;
+//                            }
                         }
 
                         if(filePosition == fileSize){
