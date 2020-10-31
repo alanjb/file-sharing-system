@@ -214,7 +214,9 @@ public class ClientServiceThread extends Thread {
         File storageFile = new File(executionPath + File.separator + "unfinishedFiles.txt");
 
         boolean unfinishedFileExistsForCurrentClient = false;
-        String fullPath = executionPath + File.separator + filePath;
+        String fullPath = executionPath + filePath;
+
+        System.out.println("Full Path: " + fullPath);
 
         FileInputStream fis = new FileInputStream(storageFile);
         ObjectInputStream ois = new ObjectInputStream(fis);
@@ -227,9 +229,11 @@ public class ClientServiceThread extends Thread {
                 HashMap<String, String> hashmap = (HashMap<String, String>) ois.readObject();
 
                 if (hashmap.containsKey(fullPath)) {
+                    System.out.println("PATH FOUND!!!!!!!!!!");
+
                     String client = hashmap.get(fullPath);
 
-                    System.out.println("Client value: " + client);
+                    System.out.println("Client value: " + client + " ||| Client name: " + clientName);
 
                     if(client.equalsIgnoreCase(clientName)){
                         System.out.println("FileName does exist in hashmap and client matches...");
