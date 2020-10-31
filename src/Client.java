@@ -42,9 +42,9 @@ public class Client {
 
         try {
             executionPath = System.getProperty("user.dir");
-            System.out.print("Executing at => " + executionPath.replace("\\", "/"));
-            System.out.print("Executing at as is => " + executionPath);
+            System.out.println("Server executing at: " + executionPath.replace("\\", "/"));
         } catch(Exception e){
+            System.out.println("There was an error getting execution for this client.");
             e.printStackTrace();
         }
 
@@ -68,7 +68,7 @@ public class Client {
 
                 case "download" -> {
                     System.out.println("Download: Calling server to retrieve file...");
-                    receive(args[1], args[2]);
+                    download(args[1], args[2]);
                 }
 
                 case "dir" -> {
@@ -92,7 +92,7 @@ public class Client {
                 }
 
                 case "shutdown" -> {
-                    System.out.println("Shutting down server.");
+                    System.out.println("Shutting down server. Goodbye.");
                     shutdown();
                 }
 
@@ -104,6 +104,8 @@ public class Client {
         } finally {
             if (clientSocket != null) {
                 clientSocket.close();
+                inFromServer.close();
+                outToServer.close();
             }
         }
     }
@@ -207,13 +209,10 @@ public class Client {
         } catch(Exception e){
             System.out.println("There was an interruption when uploading file. Please retry to complete \n.");
             e.printStackTrace();
-        } finally {
-            outToServer.close();
-            inFromServer.close();
         }
     }
 
-    private static void receive(String filePathOnServer, String filePathOnClient) throws IOException {
+    private static void download(String filePathOnServer, String filePathOnClient) throws IOException {
         String command = "download";
 
         //send command to server
@@ -288,9 +287,6 @@ public class Client {
         } catch(Exception e){
             System.err.println("404 ERROR: There was an error trying to remove the directory.");
             e.printStackTrace();
-        }  finally {
-            outToServer.close();
-            inFromServer.close();
         }
     }
 
@@ -312,8 +308,6 @@ public class Client {
             }
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-
         }
     }
 
@@ -341,9 +335,6 @@ public class Client {
             }
         } catch (Exception e) {
             System.out.println("ERROR: " + e.getMessage());
-        } finally {
-            outToServer.close();
-            inFromServer.close();
         }
     }
 }
