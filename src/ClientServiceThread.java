@@ -3,6 +3,8 @@ import java.net.*;
 import java.nio.channels.FileLock;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class ClientServiceThread extends Thread {
@@ -32,17 +34,15 @@ public class ClientServiceThread extends Thread {
                         Long fileSize = this.dis.readLong();
 
                         String executionPath = System.getProperty("user.dir");
+
                         File file = new File(executionPath + File.separator + serverPath);
 
-                        System.out.println("FILEPATH ON SERVER: " + serverPath);
+                        System.out.println("FILEPATH ON SERVER: " + file.getAbsolutePath());
 
                         System.out.println("Now checking if storage file exists...");
-
-                        //create txt file to store hashmap if it doesn't already exist
                         boolean storageFileExists = checkIfFileStorageExists();
 
                         if(!storageFileExists){
-
                             System.out.println("No storage file...creating...");
                             createStorageFile();
                         }
@@ -60,12 +60,18 @@ public class ClientServiceThread extends Thread {
 
                             long filePos = file.length();
 
+                            System.out.println("Current file position " + filePos);
+
                             //send back offset position to restart upload from where it left off
                             dos.writeBoolean(true);
                             dos.writeLong(filePos);
+
+//                            RandomAccessFile raf = new RandomAccessFile(file, "rw");
+//
+//                            raf.seek(filePos);
                         }
 
-                        receive(fileName, clientName, serverPath, fileSize, file);
+                        receive(fileName, clientName, serverPath, fileSize, file, fileExistsAndClientIsOwner);
                     }
 
                     case "download" -> {
@@ -108,6 +114,19 @@ public class ClientServiceThread extends Thread {
         } catch(IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static String getExecutionPathOfCurrentClient(){
+        String executionPath = null;
+
+        try {
+            executionPath = System.getProperty("user.dir");
+            System.out.println("Server Executing at: " + executionPath.replace("\\", "/"));
+        } catch(Exception e){
+            e.printStackTrace();
+        }
+
+        return executionPath;
     }
 
     private boolean checkIfFileStorageExists(){
@@ -238,6 +257,12 @@ public class ClientServiceThread extends Thread {
                     if(client.equalsIgnoreCase(clientName)){
                         System.out.println("FileName does exist in hashmap and client matches...");
                         unfinishedFileExistsForCurrentClient = true;
+
+                        System.out.println("UNFINISHED FILES LIST: " + "\n");
+
+                        for(Map.Entry<String,String> m : hashmap.entrySet()){
+                            System.out.println(m.getKey()+" : "+m.getValue());
+                        }
                     }
                 } else {
                     System.out.println("FileName does not exist in hashmap");
@@ -249,6 +274,8 @@ public class ClientServiceThread extends Thread {
             System.out.println("There was an error finding the storage file: " +  "\n");
             e.printStackTrace();
         }
+
+
 
         System.out.println("DOES THE FILE EXIST IN THE HASHMAP: " + unfinishedFileExistsForCurrentClient);
 
@@ -300,13 +327,16 @@ public class ClientServiceThread extends Thread {
     }
 
     private void removeFile(String serverPath) throws IOException, FileNotFoundException {
-        File file = new File(serverPath);
+        String executionPath = getExecutionPathOfCurrentClient();
+
+        File file = new File(executionPath + File.separator + serverPath);
 
         try {
             if(file.exists()){
-                this.dos.writeBoolean(true);
-                file.delete();
-
+                if(file.delete()){
+                    this.dos.writeBoolean(true);
+                    System.out.println("File deleted: " + file.getAbsolutePath());
+                }
             } else {
                 this.dos.writeBoolean(false);
                 System.out.println("There was an error. No such file exists.");
@@ -347,7 +377,7 @@ public class ClientServiceThread extends Thread {
         }
     }
 
-    private void receive(String fileName, String clientName, String serverPath, Long fileSize, File file) throws IOException {
+    private void receive(String fileName, String clientName, String serverPath, Long fileSize, File file, Boolean fileExistsAndClientIsOwner) throws IOException {
         try {
 
             RandomAccessFile raf = new RandomAccessFile(file, "rw");
@@ -355,7 +385,6 @@ public class ClientServiceThread extends Thread {
             System.out.println("Random access file created");
 
             synchronized(raf) {
-                System.out.println("test");
                 try {
                     byte[] buffer = new byte[1024];
                     int read = 0;
@@ -364,7 +393,11 @@ public class ClientServiceThread extends Thread {
 
                     FileLock lock = raf.getChannel().lock();
 
-                    try{
+                    try {
+                        if(fileExistsAndClientIsOwner){
+                            raf.seek(2590720);
+                        }
+
                         while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
                             filePosition += read;
                             remaining -= read;
@@ -374,15 +407,15 @@ public class ClientServiceThread extends Thread {
                                             "%");
                             raf.write(buffer, 0, read);
 
-//                            if(filePosition >= 500000){
-//                                System.out.println(" ");
-//                                System.out.println("******");
-//                                System.out.println("*SIMULATING SERVER CRASH* Crashed: " + fileName + " at " + filePosition + " bytes. Please restart server to resume upload.");
-//                                break;
-//                            }
+                            if(filePosition >= 2589725){
+                                System.out.println(" ");
+                                System.out.println("******");
+                                System.out.println("*SIMULATING SERVER CRASH* Crashed: " + fileName + " at " + filePosition + " bytes. Please restart server to resume upload.");
+                                break;
+                            }
                         }
 
-                        if(filePosition == fileSize){
+                        if(filePosition >= fileSize){
                             System.out.println("\n File Download Complete");
                             //remove from hashmap since the file completed
                             removeFromHashMap(serverPath, clientName);
@@ -410,16 +443,18 @@ public class ClientServiceThread extends Thread {
     }
 
     private void removeDirectory(String existingFilePathOnServer) throws IOException {
-        try{
-            File file = new File(existingFilePathOnServer);
+        String executionPath = getExecutionPathOfCurrentClient();
 
-            // check if directory is empty
+        try{
+            File file = new File(executionPath + File.separator + existingFilePathOnServer);
+
             if (file.isDirectory()) {
                 String[] list = file.list();
-                if (list.length == 0) {
+                if (list != null && list.length == 0) {
                     System.out.println("Directory is empty! Deleting...");
-                    file.delete();
-                    this.dos.writeBoolean(true);
+                    if(file.delete()){
+                        this.dos.writeBoolean(true);
+                    }
                 } else {
                     System.out.println("Directory is not empty! Unable to delete.");
                     this.dos.writeBoolean(false);
@@ -438,11 +473,12 @@ public class ClientServiceThread extends Thread {
     public void listDirectoryItems(String existingFilePathOnServer) throws IOException {
         FileInputStream fis = null;
         BufferedInputStream bis = null;
+        String executionPath = getExecutionPathOfCurrentClient();
 
         System.out.println("Retrieving file/directory items from: " + existingFilePathOnServer);
 
         //creating file so we might need FileOutput Stream here.
-        File directoryToSend = new File(existingFilePathOnServer);
+        File directoryToSend = new File(executionPath + File.separator + existingFilePathOnServer);
 
         try {
             if(directoryToSend.isDirectory()){
@@ -457,16 +493,16 @@ public class ClientServiceThread extends Thread {
 
         } catch(Exception e){
             this.dos.writeBoolean(false);
-            e.getMessage();
             e.printStackTrace();
         }
     }
 
     public void createDirectory(String directoryPath) throws FileAlreadyExistsException, IOException, NoSuchFileException {
         System.out.println("Where to save this dir: " + directoryPath);
+        String executionPath = getExecutionPathOfCurrentClient();
 
         try {
-            File dir = new File(directoryPath);
+            File dir = new File(executionPath + File.separator + directoryPath);
 
             if(!dir.exists()){
                 boolean dirWasCreated = dir.mkdir();

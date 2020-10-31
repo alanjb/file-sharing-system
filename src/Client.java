@@ -62,12 +62,12 @@ public class Client {
         try {
             switch (userCommand) {
                 case "upload" -> {
-                    System.out.println("UPLOAD SELECTED: Sending file to server...");
+                    System.out.println("Upload: Sending file to server...");
                     upload(args[1], args[2]);
                 }
 
                 case "download" -> {
-                    System.out.println("DOWNLOAD: Calling server to retrieve file...");
+                    System.out.println("Download: Calling server to retrieve file...");
                     receive(args[1], args[2]);
                 }
 
@@ -77,12 +77,12 @@ public class Client {
                 }
 
                 case "mkdir" -> {
-                    System.out.println("Create directory: Calling server to remove file...");
+                    System.out.println("Create Directory: Calling server to remove file...");
                     mkdir(args[1]);
                 }
 
                 case "rmdir" -> {
-                    System.out.println("Remove directory: Calling server to remove file...");
+                    System.out.println("Remove Directory: Calling server to remove file...");
                     rmdir(args[1]);
                 }
 
@@ -170,8 +170,12 @@ public class Client {
 
             if(inFromServer.readBoolean()){
                 System.out.println("Resuming upload for file: " + fileName);
+
                 long unfinishedFileSizeOnServer = inFromServer.readLong();
-                raf.seek(unfinishedFileSizeOnServer);
+
+                System.out.println("File position: " + unfinishedFileSizeOnServer);
+
+                raf.seek(2590720);
             } else {
                 System.out.println("Starting a new upload for file: " + fileName);
             }
@@ -192,7 +196,10 @@ public class Client {
             }
 
             if(filePosition == fileSize){
-                System.out.println("\n File Upload Complete");
+                System.out.print(
+                        "\r Uploading file...100%"
+                );
+                System.out.println("\n\n File Upload Complete");
             }
 
             raf.close();
@@ -258,8 +265,9 @@ public class Client {
         }
     }
 
-    private static void rmdir(String filePathOnServer){
-        String command = "rmDir";
+    private static void rmdir(String filePathOnServer) throws IOException {
+        String command = "rmdir";
+
         try {
             System.out.println("Sending request to remove directory ...");
 
@@ -280,8 +288,9 @@ public class Client {
         } catch(Exception e){
             System.err.println("404 ERROR: There was an error trying to remove the directory.");
             e.printStackTrace();
-        } finally {
-
+        }  finally {
+            outToServer.close();
+            inFromServer.close();
         }
     }
 
@@ -333,7 +342,8 @@ public class Client {
         } catch (Exception e) {
             System.out.println("ERROR: " + e.getMessage());
         } finally {
-//                CloseAllStreams();
+            outToServer.close();
+            inFromServer.close();
         }
     }
 }
