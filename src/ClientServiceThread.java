@@ -115,7 +115,6 @@ public class ClientServiceThread extends Thread {
 
         try {
             executionPath = System.getProperty("user.dir");
-            System.out.println("Server Executing at: " + executionPath.replace("\\", "/"));
         } catch(Exception e){
             e.printStackTrace();
         }
@@ -348,19 +347,25 @@ public class ClientServiceThread extends Thread {
     private void send(String serverPath) throws IOException {
         String executionPath = getExecutionPathOfCurrentClient();
         File file = new File(executionPath + File.separator + serverPath);
-        RandomAccessFile raf = new RandomAccessFile(file, "rw");
 
         long filePosition = 0;
 
         long fileSize = file.length();
 
+        System.out.println("Path of file on server: " + file.getAbsolutePath());
+
+        boolean fileExists = file.exists();
+
+        System.out.println("Does exist: " + fileExists);
+
         try {
-            if(file.exists()){
-
-                System.out.println("File exists: " + file.getAbsolutePath() + "...Starting download");
-
+            if(fileExists){
                 //send true that it exists
                 this.dos.writeBoolean(true);
+
+                RandomAccessFile raf = new RandomAccessFile(file, "rw");
+
+                System.out.println("File exists: " + file.getAbsolutePath() + "...Starting download");
 
                 //send fileSize
                 this.dos.writeLong(fileSize);

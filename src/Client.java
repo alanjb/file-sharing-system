@@ -1,6 +1,5 @@
 import java.io.*;
 import java.net.*;
-import java.nio.channels.FileLock;
 
 public class Client {
     private static DataInputStream inFromServer = null;
@@ -43,9 +42,8 @@ public class Client {
 
         try {
             executionPath = System.getProperty("user.dir");
-            System.out.println("Server executing at: " + executionPath.replace("\\", "/"));
         } catch(Exception e){
-            System.out.println("There was an error getting execution for this client.");
+            System.out.println("There was an error getting execution for this system.");
             e.printStackTrace();
         }
 
@@ -219,6 +217,10 @@ public class Client {
         String command = "download";
         String executionPath = getExecutionPathOfCurrentClient();
 
+        System.out.println("Execution path: " + executionPath);
+
+        System.out.println("filePathOnClient path: " + filePathOnClient);
+
         //send command to server
         outToServer.writeUTF(command);
 
@@ -231,7 +233,7 @@ public class Client {
 
                 long fileSize = inFromServer.readLong();
 
-                File file = new File(executionPath + File.separator + filePathOnClient);
+                File file = new File(executionPath + File.separator +  filePathOnClient);
 
                 RandomAccessFile raf = new RandomAccessFile(file, "rw");
 
