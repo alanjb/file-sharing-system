@@ -346,28 +346,48 @@ public class ClientServiceThread extends Thread {
     }
 
     private void send(String serverPath) throws IOException {
-        File file = new File(serverPath);
+        String executionPath = getExecutionPathOfCurrentClient();
+        File file = new File(executionPath + File.separator + serverPath);
+        RandomAccessFile raf = new RandomAccessFile(file, "rw");
+
+        long filePosition = 0;
+
+        long fileSize = file.length();
 
         try {
             if(file.exists()){
+
+                System.out.println("File exists: " + file.getAbsolutePath() + "...Starting download");
+
                 //send true that it exists
                 this.dos.writeBoolean(true);
 
                 //send fileSize
-                this.dos.writeLong(file.length());
+                this.dos.writeLong(fileSize);
 
-                //send file name
-                this.dos.writeUTF(file.getName());
-
-                FileInputStream fis = new FileInputStream(serverPath);
+                int read = 0;
+                int remaining = Math.toIntExact(fileSize);
                 byte[] buffer = new byte[1024];
 
-                while(fis.read(buffer) > 0){
+                while((read = raf.read(buffer, 0, Math.min(buffer.length, remaining))) > 0){
+                    filePosition += read;
+                    remaining -= read;
+                    System.out.print(
+                            "\r Sending file..."
+                                    + (int)((double)(filePosition)/fileSize * 100)
+                                    + "%");
                     dos.write(buffer);
                 }
 
+                if(filePosition >= fileSize){
+                    System.out.print(
+                            "\r Sending file...100%"
+                    );
+                    System.out.println("\n\n File Transfer Complete");
+                }
+
             } else {
-                //handle file does not exist
+                System.out.println("File does not exist on server...");
                 this.dos.writeBoolean(false);
             }
         } catch(Exception e){
@@ -378,7 +398,6 @@ public class ClientServiceThread extends Thread {
 
     private void receive(String fileName, String clientName, String serverPath, Long fileSize, File file, Boolean fileExistsAndClientIsOwner) throws IOException {
         try {
-
             RandomAccessFile raf = new RandomAccessFile(file, "rw");
 
             System.out.println("Random access file created");

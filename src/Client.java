@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.*;
+import java.nio.channels.FileLock;
 
 public class Client {
     private static DataInputStream inFromServer = null;
@@ -216,6 +217,7 @@ public class Client {
 
     private static void download(String filePathOnServer, String filePathOnClient) throws IOException {
         String command = "download";
+        String executionPath = getExecutionPathOfCurrentClient();
 
         //send command to server
         outToServer.writeUTF(command);
@@ -224,44 +226,54 @@ public class Client {
         outToServer.writeUTF(filePathOnServer);
 
         try {
-            //if file exists on server
-            if(inFromServer.readBoolean()){
+            if(inFromServer.readBoolean()) {
                 System.out.println("File exists on server...");
 
-                //get file size from server
                 long fileSize = inFromServer.readLong();
 
-                //get file name from server
-                String fileName = inFromServer.readUTF();
+                File file = new File(executionPath + File.separator + filePathOnClient);
 
+                RandomAccessFile raf = new RandomAccessFile(file, "rw");
 
-                FileOutputStream fos = new FileOutputStream(filePathOnClient + File.separator + fileName);
-                byte[] buffer = new byte[1024];
-                int read = 0;
-                int filePosition = 0;
-                int remaining = Math.toIntExact(fileSize);
+                System.out.println("Random access file created on client for downloading...");
 
-                System.out.println("Starting download for " + fileName + "..." + "\n");
+                try {
+                    byte[] buffer = new byte[1024];
+                    int read = 0;
+                    long filePosition = 0;
+                    int remaining = Math.toIntExact(fileSize);
+                    long filePos = file.length();
 
-                while((read = inFromServer.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
-                    filePosition += read;
-                    remaining -= read;
-                    System.out.println("read " + filePosition + " bytes / " + fileSize + " total bytes");
-                    fos.write(buffer, 0, read);
-                }
+                    while ((read = inFromServer.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
+                        filePosition += read;
+                        remaining -= read;
+                        System.out.print(
+                                "\r Downloading file..." +
+                                        (int) ((double) (filePosition) / fileSize * 100) +
+                                        "%");
+                        raf.write(buffer, 0, read);
+                    }
 
-                fos.close();
+                    if (filePosition >= fileSize) {
+                        System.out.println("\n File Download Complete");
+                        //remove from hashmap since the file completed
+                    } else {
+                        System.out.println("\n There was an interruption when uploading file. Please retry to complete.");
+                    }
 
-                if(filePosition == fileSize){
-                    System.out.println("Finished download for " + fileName + "...");
-                } else {
-                    System.out.println("There was an error downloading " + fileName + ". Please try again.");
+                } catch (Exception e) {
+                    System.out.println("\n Something went wrong as the client was uploading a file.");
+                    e.printStackTrace();
+                } finally {
+                    raf.close();
                 }
 
             } else {
-                System.err.println("404 ERROR: File does not exist on server. Please try again.");
+                System.out.println("404 ERROR. The file you requested to download does not exist on server.");
             }
-        } catch(Exception e){
+
+        } catch (Exception e) {
+            System.out.println("An error occurred attempting to receive file on server.");
             e.printStackTrace();
         }
     }
