@@ -218,6 +218,7 @@ public class ClientServiceThread extends Thread {
         String executionPath = System.getProperty("user.dir");
         File storageFile = new File(executionPath + File.separator + "unfinishedFiles.txt");
         boolean unfinishedFileExistsForCurrentClient = false;
+        String fullPath = executionPath + File.separator + filePath;
 
         FileInputStream fis = new FileInputStream(storageFile);
 
@@ -228,8 +229,8 @@ public class ClientServiceThread extends Thread {
                 @SuppressWarnings("unchecked")
                 HashMap<String, String> hashmap = (HashMap<String, String>) ois.readObject();
 
-                if (hashmap.containsKey(filePath)) {
-                    if (String.valueOf(hashmap.get(filePath)).equalsIgnoreCase(clientName)) {
+                if (hashmap.containsKey(fullPath)) {
+                    if (String.valueOf(hashmap.get(fullPath)).equalsIgnoreCase(clientName)) {
                         unfinishedFileExistsForCurrentClient = true;
                     }
                 } else {
