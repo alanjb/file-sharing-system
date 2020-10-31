@@ -144,6 +144,7 @@ public class Client {
         String executionPathOnClient = getExecutionPathOfCurrentClient();
         File file = new File(executionPathOnClient + File.separator + filePathOnClient);
         RandomAccessFile raf = new RandomAccessFile(file, "rw");
+        int filePosition = 0;
 
         long fileSize = file.length();
         String fileName = file.getName();
@@ -173,17 +174,16 @@ public class Client {
             if(inFromServer.readBoolean()){
                 System.out.println("Resuming upload for file: " + fileName);
 
-                long unfinishedFileSizeOnServer = inFromServer.readLong();
+                long position = inFromServer.readLong();
 
-                System.out.println("File position: " + unfinishedFileSizeOnServer);
+                System.out.println("File position: " + position);
 
-                raf.seek(2590720);
+                raf.seek(position);
             } else {
                 System.out.println("Starting a new upload for file: " + fileName);
             }
 
             int read = 0;
-            int filePosition = 0;
             int remaining = Math.toIntExact(fileSize);
             byte[] buffer = new byte[1024];
 
@@ -197,7 +197,7 @@ public class Client {
                 outToServer.write(buffer);
             }
 
-            if(filePosition == fileSize){
+            if(filePosition >= fileSize){
                 System.out.print(
                         "\r Uploading file...100%"
                 );

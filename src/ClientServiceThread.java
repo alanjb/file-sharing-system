@@ -3,8 +3,6 @@ import java.net.*;
 import java.nio.channels.FileLock;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 public class ClientServiceThread extends Thread {
@@ -24,7 +22,7 @@ public class ClientServiceThread extends Thread {
             try {
                 userCommand = this.dis.readUTF();
 
-                System.out.println("Client Command Selected: " + userCommand);
+                System.out.println("Client Command Selected: " + userCommand + "\n");
 
                 switch (userCommand) {
                     case "upload" -> {
@@ -65,10 +63,6 @@ public class ClientServiceThread extends Thread {
                             //send back offset position to restart upload from where it left off
                             dos.writeBoolean(true);
                             dos.writeLong(filePos);
-
-//                            RandomAccessFile raf = new RandomAccessFile(file, "rw");
-//
-//                            raf.seek(filePos);
                         }
 
                         receive(fileName, clientName, serverPath, fileSize, file, fileExistsAndClientIsOwner);
@@ -390,12 +384,13 @@ public class ClientServiceThread extends Thread {
                     int read = 0;
                     int filePosition = 0;
                     int remaining = Math.toIntExact(fileSize);
+                    Long filePos = file.length();
 
                     FileLock lock = raf.getChannel().lock();
 
                     try {
                         if(fileExistsAndClientIsOwner){
-                            raf.seek(2590720);
+                            raf.seek(filePos);
                         }
 
                         while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
