@@ -242,7 +242,7 @@ public class ClientServiceThread extends Thread {
                 HashMap<String, String> hashmap = (HashMap<String, String>) ois.readObject();
 
                 if (hashmap.containsKey(fullPath)) {
-                    System.out.println("PATH FOUND!!!!!!!!!!");
+                    System.out.println("This path has an unfinished upload on server...Checking if client is owner...");
 
                     String client = hashmap.get(fullPath);
 
@@ -257,6 +257,11 @@ public class ClientServiceThread extends Thread {
                         for(Map.Entry<String,String> m : hashmap.entrySet()){
                             System.out.println(m.getKey()+" : "+m.getValue());
                         }
+                    } else {
+                        //equals file path but not client
+                        System.out.println("Same file path but different client uploaded. Replacing file with new upload from this client...");
+                        unfinishedFileExistsForCurrentClient = false;
+                        removeFromHashMap(filePath, clientName);
                     }
                 } else {
                     System.out.println("FileName does not exist in hashmap");
@@ -382,7 +387,7 @@ public class ClientServiceThread extends Thread {
                 try {
                     byte[] buffer = new byte[1024];
                     int read = 0;
-                    int filePosition = 0;
+                    long filePosition = 0;
                     int remaining = Math.toIntExact(fileSize);
                     Long filePos = file.length();
 
@@ -391,6 +396,7 @@ public class ClientServiceThread extends Thread {
                     try {
                         if(fileExistsAndClientIsOwner){
                             raf.seek(filePos);
+                            filePosition = filePos;
                         }
 
                         while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
@@ -402,12 +408,12 @@ public class ClientServiceThread extends Thread {
                                             "%");
                             raf.write(buffer, 0, read);
 
-                            if(filePosition >= 2589725){
-                                System.out.println(" ");
-                                System.out.println("******");
-                                System.out.println("*SIMULATING SERVER CRASH* Crashed: " + fileName + " at " + filePosition + " bytes. Please restart server to resume upload.");
-                                break;
-                            }
+//                            if(filePosition >= 2589725){
+//                                System.out.println(" ");
+//                                System.out.println("******");
+//                                System.out.println("*SIMULATING SERVER CRASH* Crashed: " + fileName + " at " + filePosition + " bytes. Please restart server to resume upload.");
+//                                break;
+//                            }
                         }
 
                         if(filePosition >= fileSize){

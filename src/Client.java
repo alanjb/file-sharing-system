@@ -144,7 +144,7 @@ public class Client {
         String executionPathOnClient = getExecutionPathOfCurrentClient();
         File file = new File(executionPathOnClient + File.separator + filePathOnClient);
         RandomAccessFile raf = new RandomAccessFile(file, "rw");
-        int filePosition = 0;
+        long filePosition = 0;
 
         long fileSize = file.length();
         String fileName = file.getName();
@@ -179,6 +179,7 @@ public class Client {
                 System.out.println("File position: " + position);
 
                 raf.seek(position);
+                filePosition = position;
             } else {
                 System.out.println("Starting a new upload for file: " + fileName);
             }
@@ -186,6 +187,7 @@ public class Client {
             int read = 0;
             int remaining = Math.toIntExact(fileSize);
             byte[] buffer = new byte[1024];
+
 
             while((read = raf.read(buffer, 0, Math.min(buffer.length, remaining))) > 0){
                 filePosition += read;
