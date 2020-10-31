@@ -167,13 +167,11 @@ public class Client {
             outToServer.writeLong(fileSize);
             System.out.println("Sending file size: " + fileSize);
 
-//            if(inFromServer.readBoolean()){
-//                System.out.println("Resuming upload for file: " + fileName);
-//                long unfinishedFileSizeOnServer = inFromServer.readLong();
-//                raf.seek(unfinishedFileSizeOnServer);
-//            }
-
-
+            if(inFromServer.readBoolean()){
+                System.out.println("Resuming upload for file: " + fileName);
+                long unfinishedFileSizeOnServer = inFromServer.readLong();
+                raf.seek(unfinishedFileSizeOnServer);
+            }
 
             int read = 0;
             int filePosition = 0;
