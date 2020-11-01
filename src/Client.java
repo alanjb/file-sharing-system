@@ -217,57 +217,74 @@ public class Client {
         String command = "download";
         String executionPath = getExecutionPathOfCurrentClient();
 
-        System.out.println("Execution path: " + executionPath);
-
-        System.out.println("filePathOnClient path: " + filePathOnClient);
-
         //send command to server
         outToServer.writeUTF(command);
 
         //send file path to server
         outToServer.writeUTF(filePathOnServer);
 
+        //get file size to compare
+        long fileSizeOfFileOnServer = inFromServer.readLong();
+
+        long filePosition = 0;
+
+        boolean shouldResumeDownload = false;
+
         try {
             if(inFromServer.readBoolean()) {
                 System.out.println("File exists on server...");
 
-                long fileSize = inFromServer.readLong();
-
                 File file = new File(executionPath + File.separator +  filePathOnClient);
 
-                RandomAccessFile raf = new RandomAccessFile(file, "rw");
+                if(file.exists() && (file.length() < fileSizeOfFileOnServer)){
+                    outToServer.writeBoolean(true);
 
-                System.out.println("Random access file created on client for downloading...");
+                    long filePositionForSeek = file.length();
+
+                    outToServer.writeLong(filePositionForSeek);
+
+                    filePosition = filePositionForSeek;
+
+                    System.out.println("Resuming download for: " + file.getName());
+
+                    shouldResumeDownload = true;
+
+                } else {
+                    outToServer.writeBoolean(false);
+                }
 
                 try {
                     byte[] buffer = new byte[1024];
                     int read = 0;
-                    long filePosition = 0;
-                    int remaining = Math.toIntExact(fileSize);
-                    long filePos = file.length();
+                    int remaining = Math.toIntExact(fileSizeOfFileOnServer);
+                    RandomAccessFile raf = new RandomAccessFile(file, "rw");
+
+                    if(shouldResumeDownload){
+                        raf.seek(filePosition);
+                    }
 
                     while ((read = inFromServer.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
                         filePosition += read;
                         remaining -= read;
                         System.out.print(
                                 "\r Downloading file..." +
-                                        (int) ((double) (filePosition) / fileSize * 100) +
+                                        (int) ((double) (filePosition) / fileSizeOfFileOnServer * 100) +
                                         "%");
                         raf.write(buffer, 0, read);
                     }
 
-                    if (filePosition >= fileSize) {
+                    if (filePosition >= fileSizeOfFileOnServer) {
                         System.out.println("\n File Download Complete");
                         //remove from hashmap since the file completed
                     } else {
                         System.out.println("\n There was an interruption when uploading file. Please retry to complete.");
                     }
 
+                    raf.close();
+
                 } catch (Exception e) {
                     System.out.println("\n Something went wrong as the client was uploading a file.");
                     e.printStackTrace();
-                } finally {
-                    raf.close();
                 }
 
             } else {

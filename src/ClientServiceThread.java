@@ -347,16 +347,14 @@ public class ClientServiceThread extends Thread {
     private void send(String serverPath) throws IOException {
         String executionPath = getExecutionPathOfCurrentClient();
         File file = new File(executionPath + File.separator + serverPath);
-
         long filePosition = 0;
-
         long fileSize = file.length();
-
-        System.out.println("Path of file on server: " + file.getAbsolutePath());
-
         boolean fileExists = file.exists();
 
         System.out.println("Does exist: " + fileExists);
+
+        //send fileSize
+        this.dos.writeLong(fileSize);
 
         try {
             if(fileExists){
@@ -367,8 +365,19 @@ public class ClientServiceThread extends Thread {
 
                 System.out.println("File exists: " + file.getAbsolutePath() + "...Starting download");
 
-                //send fileSize
-                this.dos.writeLong(fileSize);
+                if(dis.readBoolean()){
+                    long filePositionForSeek = dis.readLong();
+
+                    System.out.println(filePositionForSeek);
+
+                    raf.seek(filePositionForSeek);
+
+                    filePosition = filePositionForSeek;
+
+                    System.out.println("Resuming download for this client and file...");
+                } else {
+                    System.out.println("Starting new download for this client and file...");
+                }
 
                 int read = 0;
                 int remaining = Math.toIntExact(fileSize);
@@ -392,7 +401,7 @@ public class ClientServiceThread extends Thread {
                 }
 
             } else {
-                System.out.println("File does not exist on server...");
+                System.out.println("\nFile does not exist on server...");
                 this.dos.writeBoolean(false);
             }
         } catch(Exception e){
