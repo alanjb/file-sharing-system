@@ -347,7 +347,6 @@ public class Client {
     private static void mkdir(String filePathOnServer) throws IOException {
         String command = "mkdir";
 
-        //transfer file name to server
         try {
             System.out.println("Sending directory creation request to server...");
 
