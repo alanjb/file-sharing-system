@@ -1,7 +1,7 @@
 import java.io.*;
 import java.net.*;
 
-public class Client {
+public class client {
     private static DataInputStream inFromServer = null;
     private static DataOutputStream outToServer = null;
     private static Socket clientSocket = null;

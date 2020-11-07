@@ -1,7 +1,7 @@
 import java.io.*;
 import java.net.*;
 
-public class Server {
+public class server {
     private static ServerSocket serverSocket = null;
 
     public static void main(String[] args) throws IOException {
@@ -59,7 +59,7 @@ public class Server {
                 DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
                 DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
 
-                Thread thread = new ClientServiceThread(clientSocket, dis, dos);
+                Thread thread = new clientServiceThread(clientSocket, dis, dos);
 
                 thread.start();
 

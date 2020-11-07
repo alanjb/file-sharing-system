@@ -5,12 +5,14 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
 import java.util.*;
 
-public class ClientServiceThread extends Thread {
+public class clientServiceThread extends Thread {
     final DataInputStream dis;
     final DataOutputStream dos;
     final Socket clientSocket;
 
-    public ClientServiceThread(Socket clientSocket, DataInputStream inFromClient, DataOutputStream outFromClient) {
+    
+
+    public clientServiceThread(Socket clientSocket, DataInputStream inFromClient, DataOutputStream outFromClient) {
         this.dis = inFromClient;
         this.dos = outFromClient;
         this.clientSocket = clientSocket;
